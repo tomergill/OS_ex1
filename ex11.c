@@ -14,8 +14,6 @@
 
 #define UPPER_TO_LOWER_DIFF ('a' - 'A')
 #define IS_SPACING_CHAR(c) ((c) == ' ' || (c) == '\n')
-#define READ_1 readCharFromFile1(file1, &char1, &finished1)
-#define READ_2 readCharFromFile2(file2, &char2, &finished2)
 
 typedef enum {FALSE = 0, TRUE = 1} BOOL;
 
@@ -27,6 +25,9 @@ typedef enum {FALSE = 0, TRUE = 1} BOOL;
 ***********************************************************/
 inline void readCharFromFile1(int file1, char *char1, BOOL *finished1);
 inline void readCharFromFile2(int file2, char *char2, BOOL *finished2);
+
+#define READ_1 readCharFromFile1(file1, &char1, &finished1)
+#define READ_2 readCharFromFile2(file2, &char2, &finished2)
 
 int main(int argc, char *argv[])
 {

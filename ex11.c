@@ -23,8 +23,8 @@ typedef enum {FALSE = 0, TRUE = 1} BOOL;
  * The output: 01
  * The Function operation: Exercise 1
 ***********************************************************/
-inline void readCharFromFile1(int file1, char *char1, BOOL *finished1);
-inline void readCharFromFile2(int file2, char *char2, BOOL *finished2);
+void readCharFromFile1(int file1, char *char1, BOOL *finished1);
+void readCharFromFile2(int file2, char *char2, BOOL *finished2);
 
 #define READ_1 readCharFromFile1(file1, &char1, &finished1)
 #define READ_2 readCharFromFile2(file2, &char2, &finished2)
@@ -137,12 +137,15 @@ int main(int argc, char *argv[])
     return 1 + isSimilar;
 }
 
-inline void readCharFromFile1(int file1, char *char1, BOOL *finished1)
+void readCharFromFile1(int file1, char *char1, BOOL *finished1)
 {
     printf("readCharFromFile1\n");
     int status = read(file1, &char1, sizeof(char1));
     if (status == 0)
+    {
         *finished1 = TRUE;
+	printf("status = 0\n");
+    }
     else if (status < 0)
     {
         if (errno == EBADF)
@@ -159,7 +162,7 @@ inline void readCharFromFile1(int file1, char *char1, BOOL *finished1)
     }
 }
 
-inline void readCharFromFile2(int file2, char *char2, BOOL *finished2)
+void readCharFromFile2(int file2, char *char2, BOOL *finished2)
 {
     printf("readCharFromFile2\n");
     int status = read(file2, &char2, sizeof(char2));

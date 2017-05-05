@@ -36,7 +36,6 @@ int main(int argc, char *argv[])
     BOOL finished1 = FALSE, finished2 = FALSE;
     BOOL isSimilar = FALSE; //false means they are equal.
 
-
     if (argc < 3)
     {
         perror("Usage Error");
@@ -44,29 +43,29 @@ int main(int argc, char *argv[])
     }
 
     printf("Opening file1\n");
-    if ((file1 = open(argv[1], O_RDONLY) == -1))
+    if ((file1 = open(argv[1], O_RDONLY)) == -1)
     {
         char *err;
-        if (errno == ENONET)
-            err = "Error : First file is NULL pointer";
+        if (errno == ENOENT)
+            err = "Error : First file is NULL pointer ";
         else if (errno == EACCES)
-            err = "Error : 'open' was unable to open the first file.";
+            err = "Error : 'open' was unable to open the first file ";
         else
-            err = "Error : unknown error opening the first file.";
+            err = "Error : unknown error opening the first file ";
         perror(err);
         return 3;
     }
 
     printf("Opening file2\n");
-    if ((file2 = open(argv[2], O_RDONLY) == -1))
+    if ((file2 = open(argv[2], O_RDONLY)) == -1)
     {
         char *err;
-        if (errno == ENONET)
-            err = "Error : Second file is NULL pointer";
+        if (errno == ENOENT)
+            err = "Error : Second file is NULL pointer ";
         else if (errno == EACCES)
-            err = "Error : 'open' was unable to open the second file.";
+            err = "Error : 'open' was unable to open the second file ";
         else
-            err = "Error : unknown error opening the second file.";
+            err = "Error : unknown error opening the second file ";
         perror(err);
         return 3;
     }
@@ -99,7 +98,11 @@ int main(int argc, char *argv[])
         {
             isSimilar = TRUE;
             READ_2;
+            continue;
         }
+
+        //Definitely not equal
+        exit(3);
     } //end of while
 
     printf("second while\n");
@@ -140,7 +143,7 @@ int main(int argc, char *argv[])
 void readCharFromFile1(int file1, char *char1, BOOL *finished1)
 {
     printf("readCharFromFile1\n");
-    int status = read(file1, &char1, sizeof(char1));
+    int status = read(file1, char1, sizeof(char));
     if (status == 0)
     {
         *finished1 = TRUE;
@@ -165,7 +168,7 @@ void readCharFromFile1(int file1, char *char1, BOOL *finished1)
 void readCharFromFile2(int file2, char *char2, BOOL *finished2)
 {
     printf("readCharFromFile2\n");
-    int status = read(file2, &char2, sizeof(char2));
+    int status = read(file2, char2, sizeof(char));
     if (status == 0)
         *finished2 = TRUE;
     else if (status < 0)

@@ -17,12 +17,16 @@
 
 #define LINE_SIZE 160 //defines the max size for each line in the configuration file.
 
+typedef enum {FALSE = 0, TRUE = 1} BOOL;
+
 int readLineFromFile(int fd, char line[LINE_SIZE + 1]);
+BOOL isDir(char *name, int resultsFd, DIR *mainDir);
+void myOpenDir(DIR **dir, char *path, int resultsFd, DIR *mainDir);
 
 int main(int argc, char *argv[])
 {
     char folderLocation[LINE_SIZE + 1], inputLocation[LINE_SIZE + 1], outputLocation[LINE_SIZE + 1];
-    int configFd, resultsFd, counter = 1;
+    int configFd, resultsFd, counter = 1, depthCount = 0;
     DIR *mainDir = NULL, *childDir = NULL;
     struct dirent *curDirent = NULL;
     struct stat stat1;
@@ -76,25 +80,7 @@ int main(int argc, char *argv[])
         return 2;
     }
 
-    if ((mainDir = opendir(folderLocation)) == NULL) //opening dir
-    {
-        //failed
-        printf("errno = %d", errno);
-        if (errno == EACCES)
-            perror("Error accessing the main directory");
-        else if (errno == ELOOP)
-            perror("Loop of symbolic links opening main directory");
-        else if (errno == ENAMETOOLONG)
-            perror("Name of main dir too long");
-        else if (errno == ENOENT)
-            perror("path to dir isn't pointing to a directory / it is an empty string");
-        else if (errno == ENOTDIR)
-            perror("path to dir isn't pointing to a directory");
-        else
-            perror("Unknown error opening main directory");
-        close(resultsFd);
-        return 2;
-    }
+    myOpenDir(&mainDir, folderLocation, resultsFd, NULL);
 
     if (chdir(folderLocation) == -1) //changing the working directory to main folder
     {
@@ -126,50 +112,14 @@ int main(int argc, char *argv[])
     while ((curDirent = readdir(mainDir)) != NULL) //read every file in the directory
     {
         printf("%d dirent named %s", counter, curDirent->d_name);
-        if ((stat(curDirent->d_name, &stat1)) == -1) //getting details on curDirent
-        {
-            printf("errno = %d", errno);
-            //failed
-            if (errno == EACCES)
-                perror("Error accessing stat of curDirent");
-            else if (errno == EFAULT)
-                perror("dirent bad address");
-            else if (errno == ELOOP)
-                perror("Too much symlinks");
-            else if (errno == ENAMETOOLONG)
-                perror("Name of dirent too long");
-            else if (errno == ENOENT)
-                perror("dirent doesn't exist");
-            else
-                perror("Error getting dirent stat");
-            close(resultsFd);
-            closedir(mainDir);
-            return 2;
-        }
 
-        if (S_ISDIR(stat1.st_mode)) //check if dir
+        /*
+         * If directory, open it and check for c file in it;
+         */
+        if (isDir(curDirent->d_name, resultsFd, mainDir))
         {
-            if ((childDir = opendir(curDirent->d_name)) == NULL) //opening dir
-            {
-                //failed
-                printf("errno = %d, name = %s\n", errno, curDirent->d_name);
-                if (errno == EACCES)
-                    perror("Error accessing child directory");
-                else if (errno == ELOOP)
-                    perror("Loop of symbolic links opening child directory");
-                else if (errno == ENAMETOOLONG)
-                    perror("Name of child dir too long");
-                else if (errno == ENOENT)
-                    perror("path to child dir isn't pointing to a directory / it is an empty "
-                                   "string");
-                else if (errno == ENOTDIR)
-                    perror("path to child isn't pointing to a directory");
-                else
-                    perror("Unknown error opening child directory");
-                close(resultsFd);
-                closedir(mainDir);
-                return 2;
-            }
+            myOpenDir(&childDir, curDirent->d_name, resultsFd, mainDir);
+
         }
 //        int len = strlen(curDirent->d_name);
 //        if (curDirent->d_name[len - 2] == '.' && curDirent->d_name[len - 1] == 'c') //c file
@@ -224,3 +174,79 @@ int readLineFromFile(int fd, char line[LINE_SIZE + 1])
     line[LINE_SIZE] = '\0';
     return i + 1;
 }
+
+BOOL isDir(char *name, int resultsFd, DIR *mainDir)
+{
+    struct stat stat1;
+    if ((stat(name, &stat1)) == -1) //getting details on name
+    {
+        printf("errno = %d", errno);
+        //failed
+        if (errno == EACCES)
+            perror("Error accessing stat of curDirent");
+        else if (errno == EFAULT)
+            perror("dirent bad address");
+        else if (errno == ELOOP)
+            perror("Too much symlinks");
+        else if (errno == ENAMETOOLONG)
+            perror("Name of dirent too long");
+        else if (errno == ENOENT)
+            perror("dirent doesn't exist");
+        else
+            perror("Error getting dirent stat");
+        close(resultsFd);
+        closedir(mainDir);
+        exit(2);
+    }
+    if (S_ISDIR(stat1.st_mode))
+        return TRUE;
+    return FALSE;
+}
+
+void myOpenDir(DIR **dir, char *path, int resultsFd, DIR *mainDir)
+{
+    if ((*dir = opendir(path)) == NULL) //opening dir
+    {
+        //failed
+        printf("errno = %d\n", errno);
+        if (errno == EACCES)
+            perror("Error accessing the main directory");
+        else if (errno == ELOOP)
+            perror("Loop of symbolic links opening main directory");
+        else if (errno == ENAMETOOLONG)
+            perror("Name of main dir too long");
+        else if (errno == ENOENT)
+            perror("path to dir isn't pointing to a directory / it is an empty string");
+        else if (errno == ENOTDIR)
+            perror("path to dir isn't pointing to a directory");
+        else
+            perror("Unknown error opening main directory");
+        if (resultsFd > 2)
+            close(resultsFd);
+        if (mainDir != NULL)
+            closedir(mainDir);
+        exit (2);
+    }
+}
+
+/*
+if ((stat(curDirent->d_name, &stat1)) == -1) //getting details on curDirent
+{
+printf("errno = %d", errno);
+//failed
+if (errno == EACCES)
+perror("Error accessing stat of curDirent");
+else if (errno == EFAULT)
+perror("dirent bad address");
+else if (errno == ELOOP)
+perror("Too much symlinks");
+else if (errno == ENAMETOOLONG)
+perror("Name of dirent too long");
+else if (errno == ENOENT)
+perror("dirent doesn't exist");
+else
+perror("Error getting dirent stat");
+close(resultsFd);
+closedir(mainDir);
+return 2;
+}*/

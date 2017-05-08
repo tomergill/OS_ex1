@@ -1,9 +1,9 @@
-/***************************************************************************************************
+/*******************************************************************************
  * Student name: Tomer Gill
  * Student: 318459450
  * Course Exercise Group: 01 (CS student, actual group is 89231-03)
  * Exercise name: Exercise 1
-***************************************************************************************************/
+*******************************************************************************/
 
 #include <malloc.h>
 #include <unistd.h>
@@ -15,7 +15,8 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#define LINE_SIZE 160 //defines the max size for each line in the configuration file.
+//defines the max size for each line in the configuration file.
+#define LINE_SIZE 160
 
 typedef enum {FALSE = 0, TRUE = 1} BOOL;
 
@@ -25,7 +26,8 @@ void myOpenDir(DIR **dir, char *path, int resultsFd, DIR *mainDir);
 
 int main(int argc, char *argv[])
 {
-    char folderLocation[LINE_SIZE + 1], inputLocation[LINE_SIZE + 1], outputLocation[LINE_SIZE + 1];
+    char folderLocation[LINE_SIZE + 1], inputLocation[LINE_SIZE + 1],
+            outputLocation[LINE_SIZE + 1];
     int configFd, resultsFd, counter = 1, depthCount = 0;
     DIR *mainDir = NULL, *childDir = NULL;
     struct dirent *curDirent = NULL;
@@ -67,8 +69,8 @@ int main(int argc, char *argv[])
     /*
      * Creating the results file for writing.
      */
-    if ((resultsFd = open("results.csv", O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IRGRP |
-                                                                       S_IWUSR)) == -1)
+    if ((resultsFd = open("results.csv", O_WRONLY | O_CREAT | O_TRUNC,
+                          S_IRUSR | S_IRGRP | S_IWUSR)) == -1)
     {
         printf("errno = %d", errno);
         char *err;
@@ -82,7 +84,7 @@ int main(int argc, char *argv[])
 
     myOpenDir(&mainDir, folderLocation, resultsFd, NULL);
 
-    if (chdir(folderLocation) == -1) //changing the working directory to main folder
+    if (chdir(folderLocation) == -1)//changing the working directory to main dir
     {
         //failed
         printf("errno = %d", errno);
@@ -91,7 +93,8 @@ int main(int argc, char *argv[])
         else if (errno == EIO)
             perror("I/O error while changing directories");
         else if (errno == ELOOP)
-            perror("Too many symbolic links were encountered in resolving path");
+            perror("Too many symbolic links were encountered in resolving "
+                           "path");
         else if (errno == ENAMETOOLONG)
             perror("Name too long");
         else if (errno == ENOENT)
@@ -106,10 +109,11 @@ int main(int argc, char *argv[])
     }
 
     /*
-     * Reading each dirent from teh directory stream and handling the ones that are directories.
+     * Reading each dirent from teh directory stream and handling the
+     * ones that are directories.
      * Note: counter starts with value 1 (see above).
      */
-    while ((curDirent = readdir(mainDir)) != NULL) //read every file in the directory
+    while ((curDirent = readdir(mainDir)) != NULL)
     {
         printf("%d dirent named %s", counter, curDirent->d_name);
 

@@ -1,9 +1,9 @@
-/***************************************************************************************************
+/*******************************************************************************
  * Student name: Tomer Gill
  * Student: 318459450
  * Course Exercise Group: 01 (CS student, actual group is 89231-03)
  * Exercise name: Exercise 1
-***************************************************************************************************/
+*******************************************************************************/
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -12,46 +12,52 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-#define UPPER_TO_LOWER_DIFF ('a' - 'A') //difference between an uppercase char to lowercase.
-#define IS_SPACING_CHAR(c) ((c) == ' ' || (c) == '\n') //checks if c is ' ' or '\n'.
+//difference between an uppercase char to lowercase.
+#define UPPER_TO_LOWER_DIFF ('a' - 'A')
+//checks if c is ' ' or '\n'
+#define IS_SPACING_CHAR(c) ((c) == ' ' || (c) == '\n')
 
 typedef enum {FALSE = 0, TRUE = 1} BOOL;
 
-/***************************************************************************************************
+/*******************************************************************************
  * function name: readCharFromFile1
  * The Input: The file descriptor of file1
  * The output: The char read, at *char1, or finished1 = TRUE.
- * The Function operation: The function tries to read a single character from file1. If succeeded
- * it is in char1. If the read went all through the end of file1, *finished is set to TRUE and
- * char1's value should be ignored. If there was an error while reading, an appropriate message
+ * The Function operation: The function tries to read a single character from
+ * file1. If succeeded it is in char1. If the read went all through the end
+ * of file1, *finished is set to TRUE and char1's value should be ignored.
+ * If there was an error while reading, an appropriate message
  * will be printed to stderr, and the program will return with exit code 3.
-***************************************************************************************************/
+*******************************************************************************/
 void readCharFromFile1(int file1, char *char1, BOOL *finished1);
 
-/***************************************************************************************************
+/*******************************************************************************
  * function name: readCharFromFile2
  * The Input: The file descriptor of file2
  * The output: The char read, at *char2, or finished2 = TRUE.
- * The Function operation: The function tries to read a single character from file2. If succeeded
- * it is in char2. If the read went all through the end of file2, *finished is set to TRUE and
- * char2's value should be ignored. If there was an error while reading, an appropriate message
- * will be printed to stderr, and the program will return with exit code 3.
-***************************************************************************************************/
+ * The Function operation: The function tries to read a single character from
+ * file2. If succeeded it is in char2. If the read went all through the end
+ * of file2, finished is set to TRUE and char2's value should be ignored.
+ * If there was an error while reading, an appropriate message will be printed
+ * to stderr, and the program will return with exit code 3.
+*******************************************************************************/
 void readCharFromFile2(int file2, char *char2, BOOL *finished2);
 
 #define READ_1 readCharFromFile1(file1, &char1, &finished1)
 #define READ_2 readCharFromFile2(file2, &char2, &finished2)
 
-/***************************************************************************************************
+/*******************************************************************************
  * function name: main
  * The Input: 2 files to compare.
- * The output: returns with exit code 1 if files are equal, 2 if similar or 3 if different.
- * The Function operation: The function reads one char at a time from each file, and compare them.
- * If they are different but similar (upper/lower versions, or one of them is ' ' / '\n') the
- * program lights a flag that says they are similar. If a real difference is found, the program
- * exits with exit code 3. Also on an error in one of the system calls, the program writes an
+ * The output: returns with exit code 1 if files are equal, 2 if similar or 3 if
+ * different.
+ * The Function operation: The function reads one char at a time from each file,
+ * and compare them. If they are different but similar (upper/lower versions,
+ * or one of them is ' ' / '\n') the program lights a flag that says they are
+ * similar. If a real difference is found, the program exits with exit code 3.
+ * Also on an error in one of the system calls, the program writes an
  * appropriate error to stderr and exits with exit code 3.
-***************************************************************************************************/
+*******************************************************************************/
 int main(int argc, char *argv[])
 {
     int file1, file2;
@@ -104,15 +110,17 @@ int main(int argc, char *argv[])
     {
         if (toupper(char1) == toupper(char2))//actual characters are equal
         {
-            if (abs(char1 - char2) == UPPER_TO_LOWER_DIFF) //difference is upper/lower letter
+            if (abs(char1 - char2) == UPPER_TO_LOWER_DIFF)
+                //difference is upper/lower letter
                 isSimilar = TRUE;
             READ_1;
             READ_2;
             continue;
         }
         //characters are not equal
-        if (IS_SPACING_CHAR(char1)) //if char1 is ' ' or '\n' count as similar and continue
+        if (IS_SPACING_CHAR(char1))
         {
+            //if char1 is ' ' or '\n' count as similar and continue
             isSimilar = TRUE;
             READ_1;
             continue;
@@ -155,23 +163,25 @@ int main(int argc, char *argv[])
     }
 
     /*
-     * If the files are equal, isSimilar will be FALSE = 0, so 1 will be returned.
-     * Other wise (they are similar) isSimilar will be TRUE = 1, so 2 will be returned.
-     * (It's clear to see that if the files are different, the program will exit before,
-     * returning 3 as required.)
+     * If the files are equal, isSimilar will be FALSE = 0, so 1 will be
+     * returned. Other wise (they are similar) isSimilar will be TRUE = 1, so
+     * 2 will be returned.
+     * (It's clear to see that if the files are different, the program will exit
+     * before, returning 3 as required.)
      */
     return 1 + isSimilar;
 }
 
-/***************************************************************************************************
- * function name: readCharFromFile2
- * The Input: The file descriptor of file2
- * The output: The char read, at *char2, or finished2 = TRUE.
- * The Function operation: The function tries to read a single character from file2. If succeeded
- * it is in char2. If the read went all through the end of file2, *finished is set to TRUE and
- * char2's value should be ignored. If there was an error while reading, an appropriate message
+/*******************************************************************************
+ * function name: readCharFromFile1
+ * The Input: The file descriptor of file1
+ * The output: The char read, at *char1, or finished1 = TRUE.
+ * The Function operation: The function tries to read a single character from
+ * file1. If succeeded it is in char1. If the read went all through the end
+ * of file1, *finished is set to TRUE and char1's value should be ignored.
+ * If there was an error while reading, an appropriate message
  * will be printed to stderr, and the program will return with exit code 3.
-***************************************************************************************************/
+*******************************************************************************/
 void readCharFromFile1(int file1, char *char1, BOOL *finished1)
 {
     printf("readCharFromFile1\n");
@@ -184,7 +194,8 @@ void readCharFromFile1(int file1, char *char1, BOOL *finished1)
     else if (status < 0)
     {
         if (errno == EBADF)
-            perror("Error : first file is not a valid file descriptor or is not open for reading.\n");
+            perror("Error : first file is not a valid file descriptor or is "
+                           "not open for reading.\n");
         else if (errno == EFAULT)
             perror("Error : char1 is outside your accessible address space.\n");
         else if (errno == EIO)
@@ -197,16 +208,16 @@ void readCharFromFile1(int file1, char *char1, BOOL *finished1)
     }
 }
 
-/***************************************************************************************************
- * function name: main
- * The Input: 2 files to compare.
- * The output: returns with exit code 1 if files are equal, 2 if similar or 3 if different.
- * The Function operation: The function reads one char at a time from each file, and compare them.
- * If they are different but similar (upper/lower versions, or one of them is ' ' / '\n') the
- * program lights a flag that says they are similar. If a real difference is found, the program
- * exits with exit code 3. Also on an error in one of the system calls, the program writes an
- * appropriate error to stderr and exits with exit code 3.
-***************************************************************************************************/
+/*******************************************************************************
+ * function name: readCharFromFile2
+ * The Input: The file descriptor of file2
+ * The output: The char read, at *char2, or finished2 = TRUE.
+ * The Function operation: The function tries to read a single character from
+ * file2. If succeeded it is in char2. If the read went all through the end
+ * of file2, finished is set to TRUE and char2's value should be ignored.
+ * If there was an error while reading, an appropriate message will be printed
+ * to stderr, and the program will return with exit code 3.
+*******************************************************************************/
 void readCharFromFile2(int file2, char *char2, BOOL *finished2)
 {
     printf("readCharFromFile2\n");
@@ -216,8 +227,8 @@ void readCharFromFile2(int file2, char *char2, BOOL *finished2)
     else if (status < 0)
     {
         if (errno == EBADF)
-            perror("Error : second file is not a valid file descriptor or is not open for reading"
-                           ".\n");
+            perror("Error : second file is not a valid file descriptor or is "
+                           "not open for reading.\n");
         else if (errno == EFAULT)
             perror("Error : char2 is outside your accessible address space.\n");
         else if (errno == EIO)

@@ -22,18 +22,23 @@
 #define IS_C_FILE(name, len) ((name[len - 1] == 'c') && (name[len - 2] == '.'))
 
 typedef enum {OK = 0, NO_C_FILE, COMPILATION_ERROR, TIMEOUT, BAD_OUTPUT,
-    SIMILLAR_OUT, WRONG_DIRECTORY, MULTIPLE_DIRECTORIES1,
-    MULTIPLE_DIRECTORIES2, MULTIPLE_DIRECTORIES3, MULTIPLE_DIRECTORIES4,
-    MULTIPLE_DIRECTORIES5, MULTIPLE_DIRECTORIES6, MULTIPLE_DIRECTORIES7,
-    MULTIPLE_DIRECTORIES8, MULTIPLE_DIRECTORIES9,
-    MULTIPLE_DIRECTORIES10}PENALTY;
+    SIMILLAR_OUT, WRONG_DIRECTORY} PENALTY;
 
 typedef enum {FALSE = 0, TRUE = 1} BOOL;
+
+typedef struct
+{
+    PENALTY penalty1;
+    PENALTY penalty2;
+    int multipleDirectories;
+}penalties_t;
 
 int readLineFromFile(int fd, char line[LINE_SIZE + 1]);
 BOOL isDir(char *name, int resultsFd, DIR *mainDir);
 void myOpenDir(DIR **dir, char *path, int resultsFd, DIR *mainDir);
-BOOL isThereCFileInLevel(char *path, int resultsFd, DIR *mainDir);
+char * findCFileInLevel(char *path, int resultsFd, DIR *mainDir);
+void handleStudentDir(int depth, penalties_t *penalties,
+                      char path[PATH_MAX + 1], int resultsFd, DIR *mainDir);
 
 int main(int argc, char *argv[])
 {
@@ -242,7 +247,7 @@ void myOpenDir(DIR **dir, char *path, int resultsFd, DIR *mainDir)
     }
 }
 
-BOOL isThereCFileInLevel(char *path, int resultsFd, DIR *mainDir)
+char * findCFileInLevel(char *path, int resultsFd, DIR *mainDir)
 {
     DIR *dir;
     struct dirent *d;
@@ -252,10 +257,43 @@ BOOL isThereCFileInLevel(char *path, int resultsFd, DIR *mainDir)
         if (IS_C_FILE(d->d_name, strlen(d->d_name) + 1))
         {
             closedir(dir);
-            return TRUE;
+            return d->d_name;
         }
     }
-    return FALSE;
+    return NULL;
+}
+
+char *findOnlyDirectoryName(char *path, int resultsFd, DIR *mainDir)
+{
+    DIR *dir;
+    struct dirent *d, *temp;
+    char newPath[PATH_MAX + 1];
+
+    myOpenDir(&dir, path, resultsFd, mainDir);
+    while ((d = readdir(dir)) != NULL)
+    {
+
+    }
+}
+
+void handleStudentDir(int depth, penalties_t *penalties,
+                      char path[PATH_MAX + 1], int resultsFd, DIR *mainDir)
+{
+    char cPath[PATH_MAX + 1], *name;
+    if ((name = findCFileInLevel(path, resultsFd, mainDir)) != NULL)
+    {
+        //there is a c file, called name
+        strcpy(cPath, path);
+        if (strlen(name) + strlen(cPath) > PATH_MAX)
+        {
+            perror("PATH TOO LONG");
+            return;
+        }
+        strcat(cPath, name);
+        //TODO stufffffff
+    }
+    //there is not c file
+
 }
 
 /*

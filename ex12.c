@@ -5,6 +5,8 @@
  * Exercise name: Exercise 1
 *******************************************************************************/
 
+//3!
+
 #include <malloc.h>
 #include <unistd.h>
 #include <errno.h>
@@ -18,6 +20,13 @@
 #define LINE_SIZE 160
 
 #define IS_C_FILE(name, len) ((name[len - 1] == 'c') && (name[len - 2] == '.'))
+
+typedef enum {OK = 0, NO_C_FILE, COMPILATION_ERROR, TIMEOUT, BAD_OUTPUT,
+    SIMILLAR_OUT, WRONG_DIRECTORY, MULTIPLE_DIRECTORIES1,
+    MULTIPLE_DIRECTORIES2, MULTIPLE_DIRECTORIES3, MULTIPLE_DIRECTORIES4,
+    MULTIPLE_DIRECTORIES5, MULTIPLE_DIRECTORIES6, MULTIPLE_DIRECTORIES7,
+    MULTIPLE_DIRECTORIES8, MULTIPLE_DIRECTORIES9,
+    MULTIPLE_DIRECTORIES10}PENALTY;
 
 typedef enum {FALSE = 0, TRUE = 1} BOOL;
 

@@ -10,28 +10,29 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <fcntl.h>
-#include <sys/types.h>
 #include <dirent.h>
-#include <string.h>
 #include <sys/stat.h>
+#include <string.h>
 
 //defines the max size for each line in the configuration file.
 #define LINE_SIZE 160
+
+#define IS_C_FILE(name, len) ((name[len - 1] == 'c') && (name[len - 2] == '.'))
 
 typedef enum {FALSE = 0, TRUE = 1} BOOL;
 
 int readLineFromFile(int fd, char line[LINE_SIZE + 1]);
 BOOL isDir(char *name, int resultsFd, DIR *mainDir);
 void myOpenDir(DIR **dir, char *path, int resultsFd, DIR *mainDir);
+BOOL isThereCFileInLevel(char *path, int resultsFd, DIR *mainDir);
 
 int main(int argc, char *argv[])
 {
     char folderLocation[LINE_SIZE + 1], inputLocation[LINE_SIZE + 1],
             outputLocation[LINE_SIZE + 1];
-    int configFd, resultsFd, counter = 1, depthCount = 0;
+    int configFd, resultsFd, counter = 1;
     DIR *mainDir = NULL, *childDir = NULL;
     struct dirent *curDirent = NULL;
-    struct stat stat1;
 
     if (argc < 2)
     {
@@ -42,8 +43,7 @@ int main(int argc, char *argv[])
     /*
      * Open the config file.
      */
-    printf("O"
-                   "pening config file\n");
+    printf("Opening config file\n");
     if ((configFd = open(argv[1], O_RDONLY)) == -1)
     {
         printf("errno = %d", errno);
@@ -231,6 +231,22 @@ void myOpenDir(DIR **dir, char *path, int resultsFd, DIR *mainDir)
             closedir(mainDir);
         exit (2);
     }
+}
+
+BOOL isThereCFileInLevel(char *path, int resultsFd, DIR *mainDir)
+{
+    DIR *dir;
+    struct dirent *d;
+    myOpenDir(&dir, path, resultsFd, mainDir);
+    while ((d = readdir(dir)) != NULL)
+    {
+        if (IS_C_FILE(d->d_name, strlen(d->d_name) + 1))
+        {
+            closedir(dir);
+            return TRUE;
+        }
+    }
+    return FALSE;
 }
 
 /*

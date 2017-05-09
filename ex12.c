@@ -13,6 +13,8 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <sys/wait.h>
+#include <time.h>
 
 //defines the max size for each line in the configuration file.
 #define LINE_SIZE 160
@@ -35,11 +37,14 @@ BOOL isDir(char *name, int resultsFd, DIR *mainDir);
 void myOpenDir(DIR **dir, char *path, int resultsFd, DIR *mainDir);
 char * findCFileInLevel(char *path, int resultsFd, DIR *mainDir);
 void handleStudentDir(int depth, penalties_t **penalties,
-                      char path[PATH_MAX + 1], int resultsFd, DIR *mainDir);
-void myWrite(int fd, char *buffer, unsigned int size, int resultsFd, DIR
+                      char path[PATH_MAX + 1], int resultsFd, DIR *mainDir,
+                      char *inputFilePath);
+void myWrite(int fd, char *buffer, size_t size, int resultsFd, DIR
 *mainDir);
 void gotZero(int resultsFd, char *message, DIR *mainDir);
 struct dirent *myreaddir(DIR *dir, int resultsFd, DIR *mainDir);
+BOOL cFileCompiled(char *path, int resultsFd, DIR *mainDir);
+pid_t myfork(int resultsFd, DIR *mainDir);
 
 int main(int argc, char *argv[])
 {
@@ -132,8 +137,7 @@ int main(int argc, char *argv[])
      * ones that are directories.
      * Note: counter starts with value 1 (see above).
      */
-    while ((curDirent = myreaddir(mainDir, resultsFd, mainDir)) != NULL) //TODO
-        // myReadDir
+    while ((curDirent = myreaddir(mainDir, resultsFd, mainDir)) != NULL)
     {
         if (curDirent->d_name == "." || curDirent->d_name == "..")
             continue;
@@ -157,7 +161,10 @@ int main(int argc, char *argv[])
             strcpy(path, folderLocation);
             strcat(path, "/");
             strcat(path, curDirent->d_name);
-            handleStudentDir(0, &penalties, path, resultsFd, mainDir);
+            handleStudentDir(0, &penalties, path, resultsFd, mainDir,
+                             inputLocation);
+            if (penalties == NULL)
+                continue;
 
             /*
              * writing to results.csv
@@ -186,9 +193,9 @@ int main(int argc, char *argv[])
                     counter++;
                     continue;
                 case BAD_OUTPUT:
-                    gotZero(resultsFd, "BAD_OUTPUT\n", mainDir);
-                    counter++;
-                    continue;
+                    pnlty = "BAD_OUTPUT";
+                    grade = 0;
+                    break;
                 case SIMILLAR_OUTPUT:
                     pnlty = "SIMILLAR_OUTPUT";
                     grade = 70;
@@ -394,15 +401,10 @@ char *findOnlyDirectoryName(char *path, int resultsFd, DIR *mainDir)
 }
 
 void handleStudentDir(int depth, penalties_t **penalties,
-                      char path[PATH_MAX + 1], int resultsFd, DIR *mainDir)
+                      char path[PATH_MAX + 1], int resultsFd, DIR *mainDir,
+                      char *inputFilePath)
 {
     char cPath[PATH_MAX + 1], *name;
-
-//    if (isFolderEmpty(path, resultsFd, mainDir)) //folder is empty
-//    {
-//        (*penalties)->penalty1 = NO_C_FILE;
-//        return;
-//    }
     if ((name = findCFileInLevel(path, resultsFd, mainDir)) != NULL)
     {
         //there is a c file, called name
@@ -415,7 +417,34 @@ void handleStudentDir(int depth, penalties_t **penalties,
         }
         strcat(cPath, "/");
         strcat(cPath, name);
-        //TODO stufffffff
+
+        /*
+         * Trying to compile
+         */
+        if (!cFileCompiled(cPath, resultsFd, mainDir))
+        {
+            (*penalties)->penalty1 = COMPILATION_ERROR;
+            (*penalties)->wrongDirectoryDepth = 0;
+            return;
+        }
+
+        /*
+         * Executing the out file.
+         */
+        int inputFd = open(inputFilePath, O_RDONLY), outputFd = open
+                ("output", O_WRONLY | O_CREAT | O_TRUNC,  S_IWUSR);
+        if (inputFd == -1 || outputFd == -1)
+        {
+            perror("can't open input/output file");
+            *penalties = NULL;
+            return;
+        }
+        pid_t cid = myfork(resultsFd, mainDir);
+        if (cid == 0) //child
+        {
+            dup2(inputFd, 0); //using input file as STDIN
+            dup2(outputFd, 1); //using output file as STDOUT
+        }
     }
     //there is no c file
     if ((name = findOnlyDirectoryName(path, resultsFd, mainDir)) != NULL &&
@@ -431,7 +460,7 @@ void handleStudentDir(int depth, penalties_t **penalties,
         strcpy(cPath, path);
         strcat(cPath, "/");
         strcat(cPath, name);
-        handleStudentDir(depth + 1, penalties, cPath, resultsFd, mainDir);
+        handleStudentDir(depth + 1, penalties, cPath, resultsFd, mainDir, inputFilePath);
         return;
     }
     if (strcmp(name, "") == 0) //no more directories
@@ -446,7 +475,7 @@ void handleStudentDir(int depth, penalties_t **penalties,
     return;
 }
 
-void myWrite(int fd, char *buffer, unsigned int size, int resultsFd, DIR
+void myWrite(int fd, char *buffer, size_t size, int resultsFd, DIR
 *mainDir)
 {
     printf("writing %s to fd %d\n", buffer, fd);
@@ -525,6 +554,52 @@ struct dirent *myreaddir(DIR *dir, int resultsFd, DIR *mainDir)
         exit(2);
     }
     return d;
+}
+
+BOOL cFileCompiled(char *path, int resultsFd, DIR *mainDir)
+{
+    pid_t cid;
+    int stat, returnVal;
+
+    if ((cid = myfork(resultsFd, mainDir)) == 0) //child proccess
+    {
+        char *args[] = {"gcc", path, NULL};
+        if (execvp("gcc", args) == -1)
+        {
+            perror("can't run gcc");
+            exit(1);
+        }
+    }
+    //father
+    returnVal = wait(&stat);
+    if (!WIFEXITED(stat) || returnVal) //either exec of gcc failed
+        return FALSE;
+    return TRUE;
+}
+
+pid_t myfork(int resultsFd, DIR *mainDir)
+{
+    pid_t cid;
+
+    if ((cid = fork()) == -1)
+    {
+        switch (errno)
+        {
+            case EAGAIN:
+                perror("Not enough space to copy process");
+                break;
+            case ENOMEM:
+                perror("Not enough memory to copy process");
+                break;
+            default:
+                perror("Unknown error while fork");
+                break;
+        }
+        closedir(mainDir);
+        close(resultsFd);
+        exit(2);
+    }
+    return cid;
 }
 
 //BOOL isFolderEmpty(char *path, int resultsFd, DIR *mainDir)

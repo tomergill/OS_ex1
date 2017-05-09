@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
             strcat(path, "/");
             strcat(path, curDirent->d_name);
             handleStudentDir(0, &penalties, path, resultsFd, mainDir,
-                             inputLocation);
+                             inputLocation, outputLocation);
             if (penalties == NULL)
                 continue;
 
@@ -464,7 +464,9 @@ void handleStudentDir(int depth, penalties_t **penalties,
             }
             if (!under5Seconds)
             {
+                //TODO kill process
                 //TIMEOUT
+                kill(cid, SIGKILL);
                 (*penalties)->penalty1 = TIMEOUT;
                 (*penalties)->wrongDirectoryDepth = 0;
                 close(outputFd);
@@ -476,7 +478,7 @@ void handleStudentDir(int depth, penalties_t **penalties,
 
             //comparing outputs
             cid = myfork(resultsFd, mainDir);
-            if (cid == 0)
+            if (cid == 0) //child running compare
             {
                 char *args[] = {"./comp.out", "./output",
                                 correctOutputFilePath, NULL};
@@ -486,23 +488,37 @@ void handleStudentDir(int depth, penalties_t **penalties,
                     exit(0);
                 }
             }
-            else
+            else //father returning compare result.
             {
                 wait(&stat);
                 if (WIFEXITED(stat))
                 {
                     switch (WEXITSTATUS(stat))
                     {
+                        default:
+                            *penalties = NULL;
+                            close(outputFd);
+                            close(inputFd);
+                            dup2(0, 0);
+                            dup2(1, 1);
+                            return;
                         case 1:
-
+                            (*penalties)->penalty1 = OK;
+                            break;
+                        case 2:
+                            (*penalties)->penalty1 = SIMILLAR_OUTPUT;
+                            break;
+                        case 3:
+                            (*penalties)->penalty1 = BAD_OUTPUT;
+                            break;
                     }
+                    (*penalties)->wrongDirectoryDepth = depth;
+                    close(outputFd);
+                    close(inputFd);
+                    dup2(0, 0);
+                    dup2(1, 1);
+                    return;
                 }
-                *penalties = NULL;
-                close(outputFd);
-                close(inputFd);
-                dup2(0, 0);
-                dup2(1, 1);
-                return;
             }
         }
         close(outputFd);
@@ -525,7 +541,7 @@ void handleStudentDir(int depth, penalties_t **penalties,
         strcat(cPath, "/");
         strcat(cPath, name);
         handleStudentDir(depth + 1, penalties, cPath, resultsFd, mainDir,
-                         inputFilePath);
+                         inputFilePath, correctOutputFilePath);
         return;
     }
     if (strcmp(name, "") == 0) //no more directories

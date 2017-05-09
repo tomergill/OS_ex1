@@ -5,8 +5,6 @@
  * Exercise name: Exercise 1
 *******************************************************************************/
 
-//3!
-
 #include <malloc.h>
 #include <unistd.h>
 #include <errno.h>
@@ -22,23 +20,25 @@
 #define IS_C_FILE(name, len) ((name[len - 1] == 'c') && (name[len - 2] == '.'))
 
 typedef enum {OK = 0, NO_C_FILE, COMPILATION_ERROR, TIMEOUT, BAD_OUTPUT,
-    SIMILLAR_OUT, WRONG_DIRECTORY} PENALTY;
+    SIMILLAR_OUTPUT, MULTIPLE_DIRECTORY} PENALTY;
 
 typedef enum {FALSE = 0, TRUE = 1} BOOL;
 
 typedef struct
 {
     PENALTY penalty1;
-    PENALTY penalty2;
-    int multipleDirectories;
+    int wrongDirectoryDepth;
 }penalties_t;
 
 int readLineFromFile(int fd, char line[LINE_SIZE + 1]);
 BOOL isDir(char *name, int resultsFd, DIR *mainDir);
 void myOpenDir(DIR **dir, char *path, int resultsFd, DIR *mainDir);
 char * findCFileInLevel(char *path, int resultsFd, DIR *mainDir);
-void handleStudentDir(int depth, penalties_t *penalties,
+void handleStudentDir(int depth, penalties_t **penalties,
                       char path[PATH_MAX + 1], int resultsFd, DIR *mainDir);
+void myWrite(int fd, char *buffer, unsigned int size, int resultsFd, DIR
+*mainDir);
+void gotZero(int resultsFd, char *message, DIR *mainDir);
 
 int main(int argc, char *argv[])
 {
@@ -47,6 +47,10 @@ int main(int argc, char *argv[])
     int configFd, resultsFd, counter = 1;
     DIR *mainDir = NULL, *childDir = NULL;
     struct dirent *curDirent = NULL;
+    penalties_t p, *penalties;
+    penalties = &p;
+    char path[PATH_MAX + 1];
+    int grade;
 
     if (argc < 2)
     {
@@ -127,8 +131,11 @@ int main(int argc, char *argv[])
      * ones that are directories.
      * Note: counter starts with value 1 (see above).
      */
-    while ((curDirent = readdir(mainDir)) != NULL)
+    while ((curDirent = readdir(mainDir)) != NULL) //TODO myReadDir
     {
+        if (curDirent->d_name == "." || curDirent->d_name == "..")
+            continue;
+
         printf("%d dirent named %s", counter, curDirent->d_name);
 
         /*
@@ -136,22 +143,91 @@ int main(int argc, char *argv[])
          */
         if (isDir(curDirent->d_name, resultsFd, mainDir))
         {
-            myOpenDir(&childDir, curDirent->d_name, resultsFd, mainDir);
+            penalties = &p;
+            penalties->penalty1 = OK;
+            penalties->wrongDirectoryDepth = 0;
+            if (strlen(folderLocation) + strlen(curDirent->d_name) + 1 >
+                PATH_MAX)
+            {
+                perror("PATH TOO LONG");
+                continue;
+            }
+            strcpy(path, folderLocation);
+            strcat(path, "/");
+            strcat(path, curDirent->d_name);
+            handleStudentDir(0, &penalties, path, resultsFd, mainDir);
 
+            /*
+             * writing to results.csv
+             */
+            myWrite(resultsFd, curDirent->d_name, strlen(curDirent->d_name),
+                    resultsFd, mainDir); //write name
+            myWrite(resultsFd, ",", strlen(","), resultsFd, mainDir);
+
+            char *pnlty = NULL;
+            switch (penalties->penalty1)
+            {
+                case NO_C_FILE:
+                    gotZero(resultsFd, "NO_C_FILE\n", mainDir);
+                    counter++;
+                    continue;
+                case MULTIPLE_DIRECTORY:
+                    gotZero(resultsFd, "MULTIPLE_DIRECTORIES\n", mainDir);
+                    counter++;
+                    continue;
+                case COMPILATION_ERROR:
+                    gotZero(resultsFd, "COMPILE_ERROR\n", mainDir);
+                    counter++;
+                    continue;
+                case TIMEOUT:
+                    gotZero(resultsFd, "TIMEOUT\n", mainDir);
+                    counter++;
+                    continue;
+                case BAD_OUTPUT:
+                    gotZero(resultsFd, "BAD_OUTPUT\n", mainDir);
+                    counter++
+                    continue;
+                case SIMILLAR_OUTPUT:
+                    pnlty = "SIMILLAR_OUTPUT";
+                    grade = 70;
+                    break;
+                default:
+                    grade = 100;
+                    break;
+            }
+            grade -= 10 * penalties->wrongDirectoryDepth;
+            grade = grade < 0 ? 0 : grade;
+            char temp[5];
+            //writing grade
+            sprintf(temp, "%d,", grade);
+            myWrite(resultsFd, temp, strlen(temp), resultsFd, mainDir);
+
+            if (pnlty != NULL)
+            {
+                myWrite(resultsFd, pnlty, strlen(pnlty), resultsFd, mainDir);
+                if (penalties->wrongDirectoryDepth > 0)
+                    myWrite(resultsFd, ",WRONG_DIRECTORY",
+                            strlen(",WRONG_DIRECTORY"), resultsFd, mainDir);
+                myWrite(resultsFd, "\n", 1, resultsFd, mainDir);
+            } else if (penalties->wrongDirectoryDepth > 0)
+                myWrite(resultsFd, "WRONG_DIRECTORY\n",
+                        strlen("WRONG_DIRECTORY\n"), resultsFd, mainDir);
+            else
+                myWrite(resultsFd, "GREAT_JOB\n", strlen("GREAT_JOB\n"),
+                        resultsFd, mainDir);
         }
-//        int len = strlen(curDirent->d_name);
-//        if (curDirent->d_name[len - 2] == '.' && curDirent->d_name[len - 1] == 'c') //c file
-//        {
-//
-//        }
         counter++;
     }
     closedir(mainDir);
-
     close(resultsFd);
     return 0;
 }
 
+void gotZero(int resultsFd, char *message, DIR *mainDir)
+{
+    myWrite(resultsFd, "0,", strlen("0,"), resultsFd, mainDir);
+    myWrite(resultsFd, message, strlen(message), resultsFd, mainDir);
+}
 
 int readLineFromFile(int fd, char line[LINE_SIZE + 1])
 {
@@ -254,6 +330,8 @@ char * findCFileInLevel(char *path, int resultsFd, DIR *mainDir)
     myOpenDir(&dir, path, resultsFd, mainDir);
     while ((d = readdir(dir)) != NULL)
     {
+        if (d->d_name == "." || d->d_name == "..")
+            continue;
         if (IS_C_FILE(d->d_name, strlen(d->d_name) + 1))
         {
             closedir(dir);
@@ -267,19 +345,62 @@ char *findOnlyDirectoryName(char *path, int resultsFd, DIR *mainDir)
 {
     DIR *dir;
     struct dirent *d, *temp;
-    char newPath[PATH_MAX + 1];
+    char dirPath[PATH_MAX + 1], tempPath[PATH_MAX+1];
+//    int length = strlen(path);
+
 
     myOpenDir(&dir, path, resultsFd, mainDir);
+
+    //find a directory
     while ((d = readdir(dir)) != NULL)
     {
-
+        if (d->d_name == "." || d->d_name == "..")
+            continue;
+        if (strlen(d->d_name) + strlen(path) > PATH_MAX)
+        {
+            perror("PATH TOO LONG");
+            continue;
+        }
+        strcpy(dirPath, path);
+        strcat(dirPath, "/");
+        strcat(dirPath, d->d_name);
+        if (isDir(dirPath, resultsFd, mainDir))
+            break;
     }
+
+    if (d == NULL)
+        return "";  //indicates there is no directory
+
+    //search if there is another dir
+    while ((temp = readdir(dir)) != NULL)
+    {
+        if (temp->d_name == "." || temp->d_name == "..")
+            continue;
+        if (strlen(temp->d_name) + strlen(path) > PATH_MAX)
+        {
+            perror("PATH TOO LONG");
+            continue;
+        }
+        strcpy(tempPath, path);
+        strcat(tempPath, "/");
+        strcat(tempPath, temp->d_name);
+        if (isDir(tempPath, resultsFd, mainDir))
+            return NULL; //indicates there are at least 2 directories or more
+    }
+    closedir(dir);
+    return d->d_name;
 }
 
-void handleStudentDir(int depth, penalties_t *penalties,
+void handleStudentDir(int depth, penalties_t **penalties,
                       char path[PATH_MAX + 1], int resultsFd, DIR *mainDir)
 {
     char cPath[PATH_MAX + 1], *name;
+
+//    if (isFolderEmpty(path, resultsFd, mainDir)) //folder is empty
+//    {
+//        (*penalties)->penalty1 = NO_C_FILE;
+//        return;
+//    }
     if ((name = findCFileInLevel(path, resultsFd, mainDir)) != NULL)
     {
         //there is a c file, called name
@@ -287,14 +408,103 @@ void handleStudentDir(int depth, penalties_t *penalties,
         if (strlen(name) + strlen(cPath) > PATH_MAX)
         {
             perror("PATH TOO LONG");
+            *penalties = NULL;
             return;
         }
+        strcat(cPath, "/");
         strcat(cPath, name);
         //TODO stufffffff
     }
-    //there is not c file
-
+    //there is no c file
+    if ((name = findOnlyDirectoryName(path, resultsFd, mainDir)) != NULL &&
+            strcmp(name, "") != 0) //name isn't "" ot NULL
+    {
+        //only one directory
+        if (strlen(name) + strlen(path) > PATH_MAX)
+        {
+            perror("PATH TOO LONG");
+            *penalties = NULL;
+            return;
+        }
+        strcpy(cPath, path);
+        strcat(cPath, "/");
+        strcat(cPath, name);
+        handleStudentDir(depth + 1, penalties, cPath, resultsFd, mainDir);
+        return;
+    }
+    if (strcmp(name, "") == 0) //no more directories
+    {
+        (*penalties)->penalty1 = NO_C_FILE;
+        (*penalties)->wrongDirectoryDepth = 0;
+        return;
+    }
+    //two or more directories == MULTIPLE DIRECTORIES
+    (*penalties)->penalty1 = MULTIPLE_DIRECTORY;
+    (*penalties)->wrongDirectoryDepth = 0;
+    return;
 }
+
+void myWrite(int fd, char *buffer, unsigned int size, int resultsFd, DIR
+*mainDir)
+{
+    printf("writing %s to fd %d\n", buffer, fd);
+    if (write(fd, buffer, size) < 0)
+    {
+        printf("errno = %d\n", errno);
+        switch (errno)
+        {
+            case EBADF:
+                perror("fd is not a valid file descriptor or is not open for "
+                               "writing");
+                break;
+            case EFAULT:
+                perror("segmentation fault while writing");
+                break;
+            case EFBIG:
+                perror("An attempt was made to write a file that exceeds the "
+                               "implementation-defined maximum file size or "
+                               "the process's file size limit, or to write at"
+                               " a position past the maximum allowed offset");
+                break;
+            case EINVAL:
+                perror("fd is attached to an object which is unsuitable for "
+                               "writing; or the file was opened with the "
+                               "O_DIRECT flag, and either the address "
+                               "specified in buf, the value specified in "
+                               "count, or the current file offset is not "
+                               "suitably aligned");
+                break;
+            case EIO:
+                perror("A low-level I/O error occurred while modifying the "
+                               "inode");
+                break;
+            case ENOSPC:
+                perror("Not enough space to write to the file");
+                break;
+            default:
+                perror("Unknown error while writing file");
+                break;
+        }
+        closedir(mainDir);
+        close(resultsFd);
+        if (fd != resultsFd)
+            close(fd);
+        exit(2);
+    }
+}
+
+//BOOL isFolderEmpty(char *path, int resultsFd, DIR *mainDir)
+//{
+//    DIR *dir;
+//    struct dirent *d;
+//    myOpenDir(&dir, path, resultsFd, mainDir);
+//    BOOL isEmpty = FALSE;
+//
+//    if ((d = readdir(dir)) == NULL)
+//        isEmpty = TRUE;
+//    closedir(dir);
+//    return isEmpty;
+//}
 
 /*
 if ((stat(curDirent->d_name, &stat1)) == -1) //getting details on curDirent

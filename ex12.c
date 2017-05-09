@@ -14,7 +14,6 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <sys/wait.h>
-#include <time.h>
 
 //defines the max size for each line in the configuration file.
 #define LINE_SIZE 160
@@ -439,12 +438,49 @@ void handleStudentDir(int depth, penalties_t **penalties,
             *penalties = NULL;
             return;
         }
+        dup2(inputFd, 0); //using input file as STDIN
+        dup2(outputFd, 1); //using output file as STDOUT
         pid_t cid = myfork(resultsFd, mainDir);
+        int stat;
         if (cid == 0) //child
         {
-            dup2(inputFd, 0); //using input file as STDIN
-            dup2(outputFd, 1); //using output file as STDOUT
+            char *args[] = {"./a.out", NULL};
+            if (execvp("./a.out",  args) == -1)
+            {
+                perror("execvp error a.out");
+                exit (-1);
+            }
         }
+        else
+        {
+            int i;
+            BOOL under5Seconds = FALSE;
+            for (i = 0; i < 5 && !under5Seconds; i++)
+            {
+                sleep(1);
+                waitpid(cid, &stat, WNOHANG);
+                if (WIFEXITED(stat))
+                    under5Seconds = TRUE;
+            }
+            if (!under5Seconds)
+            {
+                //TIMEOUT
+                (*penalties)->penalty1 = TIMEOUT;
+                (*penalties)->wrongDirectoryDepth = 0;
+                close(outputFd);
+                close(inputFd);
+                return;
+            }
+
+            //comparing outputs
+            cid = myfork(resultsFd, mainDir);
+            if (cid == 0)
+            {
+                char *args[] = {"./comp.out", "./output", };
+            }
+        }
+        close(outputFd);
+        close(inputFd);
     }
     //there is no c file
     if ((name = findOnlyDirectoryName(path, resultsFd, mainDir)) != NULL &&
@@ -460,7 +496,8 @@ void handleStudentDir(int depth, penalties_t **penalties,
         strcpy(cPath, path);
         strcat(cPath, "/");
         strcat(cPath, name);
-        handleStudentDir(depth + 1, penalties, cPath, resultsFd, mainDir, inputFilePath);
+        handleStudentDir(depth + 1, penalties, cPath, resultsFd, mainDir,
+                         inputFilePath);
         return;
     }
     if (strcmp(name, "") == 0) //no more directories
@@ -559,7 +596,7 @@ struct dirent *myreaddir(DIR *dir, int resultsFd, DIR *mainDir)
 BOOL cFileCompiled(char *path, int resultsFd, DIR *mainDir)
 {
     pid_t cid;
-    int stat, returnVal;
+    int stat;
 
     if ((cid = myfork(resultsFd, mainDir)) == 0) //child proccess
     {
@@ -571,10 +608,8 @@ BOOL cFileCompiled(char *path, int resultsFd, DIR *mainDir)
         }
     }
     //father
-    returnVal = wait(&stat);
-    if (!WIFEXITED(stat) || returnVal) //either exec of gcc failed
-        return FALSE;
-    return TRUE;
+    wait(&stat);
+    return  (WEXITSTATUS(stat) == 0) != 0 ? TRUE : FALSE;
 }
 
 pid_t myfork(int resultsFd, DIR *mainDir)

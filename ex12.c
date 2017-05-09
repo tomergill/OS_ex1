@@ -39,6 +39,7 @@ void handleStudentDir(int depth, penalties_t **penalties,
 void myWrite(int fd, char *buffer, unsigned int size, int resultsFd, DIR
 *mainDir);
 void gotZero(int resultsFd, char *message, DIR *mainDir);
+struct dirent *myreaddir(DIR *dir, int resultsFd, DIR *mainDir);
 
 int main(int argc, char *argv[])
 {
@@ -131,7 +132,8 @@ int main(int argc, char *argv[])
      * ones that are directories.
      * Note: counter starts with value 1 (see above).
      */
-    while ((curDirent = readdir(mainDir)) != NULL) //TODO myReadDir
+    while ((curDirent = myreaddir(mainDir, resultsFd, mainDir)) != NULL) //TODO
+        // myReadDir
     {
         if (curDirent->d_name == "." || curDirent->d_name == "..")
             continue;
@@ -185,7 +187,7 @@ int main(int argc, char *argv[])
                     continue;
                 case BAD_OUTPUT:
                     gotZero(resultsFd, "BAD_OUTPUT\n", mainDir);
-                    counter++
+                    counter++;
                     continue;
                 case SIMILLAR_OUTPUT:
                     pnlty = "SIMILLAR_OUTPUT";
@@ -328,7 +330,7 @@ char * findCFileInLevel(char *path, int resultsFd, DIR *mainDir)
     DIR *dir;
     struct dirent *d;
     myOpenDir(&dir, path, resultsFd, mainDir);
-    while ((d = readdir(dir)) != NULL)
+    while ((d = myreaddir(dir, resultsFd, mainDir)) != NULL)
     {
         if (d->d_name == "." || d->d_name == "..")
             continue;
@@ -352,7 +354,7 @@ char *findOnlyDirectoryName(char *path, int resultsFd, DIR *mainDir)
     myOpenDir(&dir, path, resultsFd, mainDir);
 
     //find a directory
-    while ((d = readdir(dir)) != NULL)
+    while ((d = myreaddir(dir, resultsFd, mainDir)) != NULL)
     {
         if (d->d_name == "." || d->d_name == "..")
             continue;
@@ -372,7 +374,7 @@ char *findOnlyDirectoryName(char *path, int resultsFd, DIR *mainDir)
         return "";  //indicates there is no directory
 
     //search if there is another dir
-    while ((temp = readdir(dir)) != NULL)
+    while ((temp = myreaddir(dir, resultsFd, mainDir)) != NULL)
     {
         if (temp->d_name == "." || temp->d_name == "..")
             continue;
@@ -491,6 +493,38 @@ void myWrite(int fd, char *buffer, unsigned int size, int resultsFd, DIR
             close(fd);
         exit(2);
     }
+}
+
+struct dirent *myreaddir(DIR *dir, int resultsFd, DIR *mainDir)
+{
+    int prevErrorno = errno;
+    struct dirent * d = NULL;
+    if ((d = readdir(dir)) == NULL && errno != prevErrorno)
+    {
+        switch (errno)
+        {
+            case EOVERFLOW:
+                perror("One of the values in the structure to be returned "
+                               "cannot be represented correctly.");
+                break;
+            case EBADF:
+                perror("dir isn't pointing to an open dir");
+                break;
+            case ENOENT:
+                perror("The current position of the directory stream is "
+                               "invalid.");
+                break;
+            default:
+                perror("Unknown error while getting dirent form dir");
+                break;
+        }
+        closedir(mainDir);
+        close(resultsFd);
+        if (dir != mainDir)
+            closedir(dir);
+        exit(2);
+    }
+    return d;
 }
 
 //BOOL isFolderEmpty(char *path, int resultsFd, DIR *mainDir)

@@ -37,7 +37,7 @@ void myOpenDir(DIR **dir, char *path, int resultsFd, DIR *mainDir);
 char * findCFileInLevel(char *path, int resultsFd, DIR *mainDir);
 void handleStudentDir(int depth, penalties_t **penalties,
                       char path[PATH_MAX + 1], int resultsFd, DIR *mainDir,
-                      char *inputFilePath);
+                      char *inputFilePath, char *correctOutputFilePath);
 void myWrite(int fd, char *buffer, size_t size, int resultsFd, DIR
 *mainDir);
 void gotZero(int resultsFd, char *message, DIR *mainDir);
@@ -401,7 +401,7 @@ char *findOnlyDirectoryName(char *path, int resultsFd, DIR *mainDir)
 
 void handleStudentDir(int depth, penalties_t **penalties,
                       char path[PATH_MAX + 1], int resultsFd, DIR *mainDir,
-                      char *inputFilePath)
+                      char *inputFilePath, char *correctOutputFilePath)
 {
     char cPath[PATH_MAX + 1], *name;
     if ((name = findCFileInLevel(path, resultsFd, mainDir)) != NULL)
@@ -469,6 +469,8 @@ void handleStudentDir(int depth, penalties_t **penalties,
                 (*penalties)->wrongDirectoryDepth = 0;
                 close(outputFd);
                 close(inputFd);
+                dup2(0, 0);
+                dup2(1, 1);
                 return;
             }
 
@@ -476,11 +478,37 @@ void handleStudentDir(int depth, penalties_t **penalties,
             cid = myfork(resultsFd, mainDir);
             if (cid == 0)
             {
-                char *args[] = {"./comp.out", "./output", };
+                char *args[] = {"./comp.out", "./output",
+                                correctOutputFilePath, NULL};
+                if (execvp("./comp.out", args) == -1)
+                {
+                    perror("Error running comp");
+                    exit(0);
+                }
+            }
+            else
+            {
+                wait(&stat);
+                if (WIFEXITED(stat))
+                {
+                    switch (WEXITSTATUS(stat))
+                    {
+                        case 1:
+
+                    }
+                }
+                *penalties = NULL;
+                close(outputFd);
+                close(inputFd);
+                dup2(0, 0);
+                dup2(1, 1);
+                return;
             }
         }
         close(outputFd);
         close(inputFd);
+        dup2(0, 0);
+        dup2(1, 1);
     }
     //there is no c file
     if ((name = findOnlyDirectoryName(path, resultsFd, mainDir)) != NULL &&

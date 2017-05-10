@@ -20,6 +20,8 @@
 
 #define IS_C_FILE(name, len) ((name[len - 1] == 'c') && (name[len - 2] == '.'))
 
+#define IS_HIDDEN_NAV_DIRS(name) ((!strcmp((name), ".")) || (!strcmp((name),"..")))
+
 typedef enum {OK = 0, NO_C_FILE, COMPILATION_ERROR, TIMEOUT, BAD_OUTPUT,
     SIMILLAR_OUTPUT, MULTIPLE_DIRECTORY} PENALTY;
 
@@ -32,7 +34,7 @@ typedef struct
 }penalties_t;
 
 int readLineFromFile(int fd, char line[LINE_SIZE + 1]);
-BOOL isDir(char *name, int resultsFd, DIR *mainDir);
+BOOL isDir(char path[PATH_MAX + 1], int resultsFd, DIR *mainDir);
 void myOpenDir(DIR **dir, char *path, int resultsFd, DIR *mainDir);
 char * findCFileInLevel(char *path, int resultsFd, DIR *mainDir);
 void handleStudentDir(int depth, penalties_t **penalties,
@@ -107,29 +109,29 @@ int main(int argc, char *argv[])
 
     myOpenDir(&mainDir, folderLocation, resultsFd, NULL);
 
-    if (chdir(folderLocation) == -1)//changing the working directory to main dir
-    {
-        //failed
-        printf("errno = %d", errno);
-        if (errno == EACCES)
-            perror("Access error changing directory");
-        else if (errno == EIO)
-            perror("I/O error while changing directories");
-        else if (errno == ELOOP)
-            perror("Too many symbolic links were encountered in resolving "
-                           "path");
-        else if (errno == ENAMETOOLONG)
-            perror("Name too long");
-        else if (errno == ENOENT)
-            perror("Directory doesn't exist");
-        else if (errno == ENOTDIR)
-            perror("Error changing directory: path isn't a directory");
-        else
-            perror("Error changing directory");
-        close(resultsFd);
-        closedir(mainDir);
-        return 2;
-    }
+//    if (chdir(folderLocation) == -1)//changing the working directory to main dir
+//    {
+//        //failed
+//        printf("errno = %d", errno);
+//        if (errno == EACCES)
+//            perror("Access error changing directory");
+//        else if (errno == EIO)
+//            perror("I/O error while changing directories");
+//        else if (errno == ELOOP)
+//            perror("Too many symbolic links were encountered in resolving "
+//                           "path");
+//        else if (errno == ENAMETOOLONG)
+//            perror("Name too long");
+//        else if (errno == ENOENT)
+//            perror("Directory doesn't exist");
+//        else if (errno == ENOTDIR)
+//            perror("Error changing directory: path isn't a directory");
+//        else
+//            perror("Error changing directory");
+//        close(resultsFd);
+//        closedir(mainDir);
+//        return 2;
+//    }
 
     /*
      * Reading each dirent from teh directory stream and handling the
@@ -138,28 +140,36 @@ int main(int argc, char *argv[])
      */
     while ((curDirent = myreaddir(mainDir, resultsFd, mainDir)) != NULL)
     {
-        if (curDirent->d_name == "." || curDirent->d_name == "..")
+        if (IS_HIDDEN_NAV_DIRS(curDirent->d_name))
             continue;
 
-        printf("%d dirent named %s", counter, curDirent->d_name);
+        printf("%d dirent named %s\n", counter, curDirent->d_name);
 
         /*
          * If directory, open it and check for c file in it;
          */
-        if (isDir(curDirent->d_name, resultsFd, mainDir))
+        if (strlen(folderLocation) + strlen(curDirent->d_name) + 1 > PATH_MAX)
+        {
+            perror("PATH TOO LONG");
+            continue;
+        }
+        strcpy(path, folderLocation);
+        strcat(path, "/");
+        strcat(path, curDirent->d_name);
+        if (isDir(path, resultsFd, mainDir))
         {
             penalties = &p;
             penalties->penalty1 = OK;
             penalties->wrongDirectoryDepth = 0;
-            if (strlen(folderLocation) + strlen(curDirent->d_name) + 1 >
-                PATH_MAX)
-            {
-                perror("PATH TOO LONG");
-                continue;
-            }
-            strcpy(path, folderLocation);
-            strcat(path, "/");
-            strcat(path, curDirent->d_name);
+//            if (strlen(folderLocation) + strlen(curDirent->d_name) + 1 >
+//                PATH_MAX)
+//            {
+//                perror("PATH TOO LONG");
+//                continue;
+//            }
+//            strcpy(path, folderLocation);
+//            strcat(path, "/");
+//            strcat(path, curDirent->d_name);
             handleStudentDir(0, &penalties, path, resultsFd, mainDir,
                              inputLocation, outputLocation);
             if (penalties == NULL)
@@ -228,6 +238,8 @@ int main(int argc, char *argv[])
     }
     closedir(mainDir);
     close(resultsFd);
+    unlink("./output");
+    unlink("./a.out");
     return 0;
 }
 
@@ -277,10 +289,10 @@ int readLineFromFile(int fd, char line[LINE_SIZE + 1])
     return i + 1;
 }
 
-BOOL isDir(char *name, int resultsFd, DIR *mainDir)
+BOOL isDir(char path[PATH_MAX + 1], int resultsFd, DIR *mainDir)
 {
     struct stat stat1;
-    if ((stat(name, &stat1)) == -1) //getting details on name
+    if ((stat(path, &stat1)) == -1) //getting details on name
     {
         printf("errno = %d", errno);
         //failed
@@ -338,9 +350,9 @@ char * findCFileInLevel(char *path, int resultsFd, DIR *mainDir)
     myOpenDir(&dir, path, resultsFd, mainDir);
     while ((d = myreaddir(dir, resultsFd, mainDir)) != NULL)
     {
-        if (d->d_name == "." || d->d_name == "..")
+        if (IS_HIDDEN_NAV_DIRS(d->d_name))
             continue;
-        if (IS_C_FILE(d->d_name, strlen(d->d_name) + 1))
+        if (IS_C_FILE(d->d_name, strlen(d->d_name)))
         {
             closedir(dir);
             return d->d_name;
@@ -362,7 +374,7 @@ char *findOnlyDirectoryName(char *path, int resultsFd, DIR *mainDir)
     //find a directory
     while ((d = myreaddir(dir, resultsFd, mainDir)) != NULL)
     {
-        if (d->d_name == "." || d->d_name == "..")
+        if (IS_HIDDEN_NAV_DIRS(d->d_name))
             continue;
         if (strlen(d->d_name) + strlen(path) > PATH_MAX)
         {
@@ -382,7 +394,7 @@ char *findOnlyDirectoryName(char *path, int resultsFd, DIR *mainDir)
     //search if there is another dir
     while ((temp = myreaddir(dir, resultsFd, mainDir)) != NULL)
     {
-        if (temp->d_name == "." || temp->d_name == "..")
+        if (IS_HIDDEN_NAV_DIRS(temp->d_name))
             continue;
         if (strlen(temp->d_name) + strlen(path) > PATH_MAX)
         {
@@ -406,6 +418,7 @@ void handleStudentDir(int depth, penalties_t **penalties,
     char cPath[PATH_MAX + 1], *name;
     if ((name = findCFileInLevel(path, resultsFd, mainDir)) != NULL)
     {
+        printf("found c file: %s/%s\n", path, name);
         //there is a c file, called name
         strcpy(cPath, path);
         if (strlen(name) + strlen(cPath) > PATH_MAX)
@@ -431,13 +444,15 @@ void handleStudentDir(int depth, penalties_t **penalties,
          * Executing the out file.
          */
         int inputFd = open(inputFilePath, O_RDONLY), outputFd = open
-                ("output", O_WRONLY | O_CREAT | O_TRUNC,  S_IWUSR);
+                ("output", O_WRONLY | O_CREAT | O_TRUNC,  S_IWUSR | S_IRUSR |
+                        S_IRGRP);
         if (inputFd == -1 || outputFd == -1)
         {
             perror("can't open input/output file");
             *penalties = NULL;
             return;
         }
+        printf("executing a.out");
         dup2(inputFd, 0); //using input file as STDIN
         dup2(outputFd, 1); //using output file as STDOUT
         pid_t cid = myfork(resultsFd, mainDir);
@@ -473,13 +488,21 @@ void handleStudentDir(int depth, penalties_t **penalties,
                 close(inputFd);
                 dup2(0, 0);
                 dup2(1, 1);
+                unlink("./output");
+                unlink("./a.out");
                 return;
             }
+
+            close(outputFd);
+            close(inputFd);
+            dup2(0, 0);
+            dup2(1, 1);
 
             //comparing outputs
             cid = myfork(resultsFd, mainDir);
             if (cid == 0) //child running compare
             {
+                printf("comparing output files\n");
                 char *args[] = {"./comp.out", "./output",
                                 correctOutputFilePath, NULL};
                 if (execvp("./comp.out", args) == -1)
@@ -497,10 +520,6 @@ void handleStudentDir(int depth, penalties_t **penalties,
                     {
                         default:
                             *penalties = NULL;
-                            close(outputFd);
-                            close(inputFd);
-                            dup2(0, 0);
-                            dup2(1, 1);
                             return;
                         case 1:
                             (*penalties)->penalty1 = OK;
@@ -513,18 +532,12 @@ void handleStudentDir(int depth, penalties_t **penalties,
                             break;
                     }
                     (*penalties)->wrongDirectoryDepth = depth;
-                    close(outputFd);
-                    close(inputFd);
-                    dup2(0, 0);
-                    dup2(1, 1);
+                    unlink("./output");
+                    unlink("./a.out");
                     return;
                 }
             }
         }
-        close(outputFd);
-        close(inputFd);
-        dup2(0, 0);
-        dup2(1, 1);
     }
     //there is no c file
     if ((name = findOnlyDirectoryName(path, resultsFd, mainDir)) != NULL &&
@@ -544,14 +557,14 @@ void handleStudentDir(int depth, penalties_t **penalties,
                          inputFilePath, correctOutputFilePath);
         return;
     }
-    if (strcmp(name, "") == 0) //no more directories
+    if (name == NULL) //two or more directories == MULTIPLE DIRECTORIES
     {
-        (*penalties)->penalty1 = NO_C_FILE;
+        (*penalties)->penalty1 = MULTIPLE_DIRECTORY;
         (*penalties)->wrongDirectoryDepth = 0;
         return;
     }
-    //two or more directories == MULTIPLE DIRECTORIES
-    (*penalties)->penalty1 = MULTIPLE_DIRECTORY;
+    //no more directories
+    (*penalties)->penalty1 = NO_C_FILE;
     (*penalties)->wrongDirectoryDepth = 0;
     return;
 }
@@ -644,6 +657,7 @@ BOOL cFileCompiled(char *path, int resultsFd, DIR *mainDir)
 
     if ((cid = myfork(resultsFd, mainDir)) == 0) //child proccess
     {
+        printf("compiling %s\n", path);
         char *args[] = {"gcc", path, NULL};
         if (execvp("gcc", args) == -1)
         {

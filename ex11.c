@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
         else
             err = "Error : unknown error opening the first file ";
         perror(err);
-        return 3;
+        exit(3);
     }
 
     printf("Opening file2\n");
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
         else
             err = "Error : unknown error opening the second file ";
         perror(err);
-        return 3;
+        exit(3);
     }
 
     printf("first while\n");
@@ -106,6 +106,8 @@ int main(int argc, char *argv[])
      */
     READ_1;
     READ_2;
+    printf("finished1 is %s, finished2 is %s\n", finished1 ? "TRUE":"FALSE",
+           finished2 ? "TRUE":"FALSE");
     while (!finished1 && !finished2)
     {
         if (toupper(char1) == toupper(char2))//actual characters are equal
@@ -189,7 +191,8 @@ void readCharFromFile1(int file1, char *char1, BOOL *finished1)
     if (status == 0)
     {
         *finished1 = TRUE;
-	printf("status = 0\n");
+	    printf("status = 0\n");
+        return;
     }
     else if (status < 0)
     {
@@ -223,7 +226,10 @@ void readCharFromFile2(int file2, char *char2, BOOL *finished2)
     printf("readCharFromFile2\n");
     int status = read(file2, char2, sizeof(char));
     if (status == 0)
+    {
         *finished2 = TRUE;
+        return;
+    }
     else if (status < 0)
     {
         if (errno == EBADF)

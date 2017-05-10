@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     printf("Opening config file\n");
     if ((configFd = open(argv[1], O_RDONLY)) == -1)
     {
-        printf("errno = %d", errno);
+        printf("errno = %d\n", errno);
         char *err;
         if (errno == ENOENT)
             err = "Error : First file is NULL pointer ";
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
     if ((resultsFd = open("results.csv", O_WRONLY | O_CREAT | O_TRUNC,
                           S_IRUSR | S_IRGRP | S_IWUSR)) == -1)
     {
-        printf("errno = %d", errno);
+        printf("errno = %d\n", errno);
         char *err;
         if (errno == EACCES)
             err = "Error : 'open' was unable to open the results file ";
@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
     }
     closedir(mainDir);
     close(resultsFd);
-    unlink("./output");
+    unlink("./output.txt");
     unlink("./a.out");
     return 0;
 }
@@ -264,7 +264,7 @@ int readLineFromFile(int fd, char line[LINE_SIZE + 1])
         }
         else if (status == -1)
         {
-            printf("errno = %d", errno);
+            printf("errno = %d\n", errno);
             if (errno == EBADF)
                 perror("Error : config file is not a valid file descriptor or is not open for "
                                "reading.\n");
@@ -294,7 +294,7 @@ BOOL isDir(char path[PATH_MAX + 1], int resultsFd, DIR *mainDir)
     struct stat stat1;
     if ((stat(path, &stat1)) == -1) //getting details on name
     {
-        printf("errno = %d", errno);
+        printf("errno = %d\n", errno);
         //failed
         if (errno == EACCES)
             perror("Error accessing stat of curDirent");
@@ -444,7 +444,7 @@ void handleStudentDir(int depth, penalties_t **penalties,
          * Executing the out file.
          */
         int inputFd = open(inputFilePath, O_RDONLY), outputFd = open
-                ("./output", O_WRONLY | O_CREAT | O_TRUNC,  S_IWUSR | S_IRUSR |
+                ("./output.txt", O_WRONLY | O_CREAT | O_TRUNC,  S_IWUSR | S_IRUSR |
                         S_IRGRP);
         if (inputFd == -1 || outputFd == -1)
         {
@@ -452,15 +452,16 @@ void handleStudentDir(int depth, penalties_t **penalties,
             *penalties = NULL;
             return;
         }
-        printf("executing a.out");
+        printf("executing a.out\n");
         int copyStdout =dup(1), copyStdin = dup(0);
         dup2(inputFd, 0); //using input file as STDIN
         dup2(outputFd, 1); //using output file as STDOUT
+
+        int stat; char *args[] = {"./a.out", NULL};
         pid_t cid = myfork(resultsFd, mainDir);
-        int stat;
         if (cid == 0) //child
         {
-            char *args[] = {"./a.out", NULL};
+
             if (execvp("./a.out",  args) == -1)
             {
                 perror("execvp error a.out");
@@ -474,7 +475,6 @@ void handleStudentDir(int depth, penalties_t **penalties,
             for (i = 0; i < 5 && !under5Seconds; i++)
             {
                 sleep(1);
-
                 if (waitpid(cid, &stat, WNOHANG))
                     under5Seconds = TRUE;
             }
@@ -500,25 +500,29 @@ void handleStudentDir(int depth, penalties_t **penalties,
             dup2(copyStdout, 1);
 
             //comparing outputs
+            char *args1[] = {"./comp.out", "./output.txt",
+                             correctOutputFilePath, NULL};
             cid = myfork(resultsFd, mainDir);
             if (cid == 0) //child running compare
             {
-                printf("comparing output files\n");
-                char *args[] = {"./comp.out", "./output",
-                                correctOutputFilePath, NULL};
-                if (execvp("./comp.out", args) == -1)
+//                printf("comparing output files\n");
+//                char *args[] = {"./comp.out", "./output",
+//                                correctOutputFilePath, NULL};
+                if (execvp("./comp.out", args1) == -1)
                 {
                     perror("Error running comp");
-                    exit(0);
+                    exit(110);
                 }
             }
             else //father returning compare result.
             {
-                wait(&stat);
-                if (WIFEXITED(stat))
+                int s;
+                sleep(15);
+                wait(&s);
+                if (WIFEXITED(s))
                 {
-                    printf("wala exit stauts is %d\n", WEXITSTATUS(stat));
-                    switch (WEXITSTATUS(stat))
+                    printf("wala exit stauts is %d\n", WEXITSTATUS(s));
+                    switch (WEXITSTATUS(s))
                     {
                         default:
                             *penalties = NULL;
@@ -657,10 +661,11 @@ BOOL cFileCompiled(char *path, int resultsFd, DIR *mainDir)
     pid_t cid;
     int stat;
 
+    printf("compiling %s\n", path);
+    char *args[] = {"gcc", path, NULL};
     if ((cid = myfork(resultsFd, mainDir)) == 0) //child proccess
     {
-        printf("compiling %s\n", path);
-        char *args[] = {"gcc", path, NULL};
+
         if (execvp("gcc", args) == -1)
         {
             perror("can't run gcc");

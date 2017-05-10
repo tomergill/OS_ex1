@@ -444,7 +444,7 @@ void handleStudentDir(int depth, penalties_t **penalties,
          * Executing the out file.
          */
         int inputFd = open(inputFilePath, O_RDONLY), outputFd = open
-                ("output", O_WRONLY | O_CREAT | O_TRUNC,  S_IWUSR | S_IRUSR |
+                ("./output", O_WRONLY | O_CREAT | O_TRUNC,  S_IWUSR | S_IRUSR |
                         S_IRGRP);
         if (inputFd == -1 || outputFd == -1)
         {
@@ -453,6 +453,7 @@ void handleStudentDir(int depth, penalties_t **penalties,
             return;
         }
         printf("executing a.out");
+        int copyStdout =dup(1), copyStdin = dup(0);
         dup2(inputFd, 0); //using input file as STDIN
         dup2(outputFd, 1); //using output file as STDOUT
         pid_t cid = myfork(resultsFd, mainDir);
@@ -473,8 +474,8 @@ void handleStudentDir(int depth, penalties_t **penalties,
             for (i = 0; i < 5 && !under5Seconds; i++)
             {
                 sleep(1);
-                waitpid(cid, &stat, WNOHANG);
-                if (WIFEXITED(stat))
+
+                if (waitpid(cid, &stat, WNOHANG))
                     under5Seconds = TRUE;
             }
             if (!under5Seconds)
@@ -486,17 +487,17 @@ void handleStudentDir(int depth, penalties_t **penalties,
                 (*penalties)->wrongDirectoryDepth = 0;
                 close(outputFd);
                 close(inputFd);
-                dup2(0, 0);
-                dup2(1, 1);
-                unlink("./output");
-                unlink("./a.out");
+                dup2(copyStdin, 0);
+                dup2(copyStdout, 1);
+//                unlink("./output");
+//                unlink("./a.out");
                 return;
             }
 
             close(outputFd);
             close(inputFd);
-            dup2(0, 0);
-            dup2(1, 1);
+            dup2(copyStdin, 0);
+            dup2(copyStdout, 1);
 
             //comparing outputs
             cid = myfork(resultsFd, mainDir);
@@ -516,6 +517,7 @@ void handleStudentDir(int depth, penalties_t **penalties,
                 wait(&stat);
                 if (WIFEXITED(stat))
                 {
+                    printf("wala exit stauts is %d\n", WEXITSTATUS(stat));
                     switch (WEXITSTATUS(stat))
                     {
                         default:
@@ -532,8 +534,8 @@ void handleStudentDir(int depth, penalties_t **penalties,
                             break;
                     }
                     (*penalties)->wrongDirectoryDepth = depth;
-                    unlink("./output");
-                    unlink("./a.out");
+//                    unlink("./output");
+//                    unlink("./a.out");
                     return;
                 }
             }

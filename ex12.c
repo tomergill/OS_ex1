@@ -50,7 +50,7 @@ typedef struct {
 * The Input: The file descriptor of the file, and a buffer for the line.
 * The output: The size of the line.
 * The Function operation: reads one character at a time, insert into buffer,
-* and if found '\n' or file has been finished read, then stop.
+ * and if found '\n' or file has been finished read, then stop.
 *******************************************************************************/
 int ReadLineFromFile(int fd, char *line);
 
@@ -463,7 +463,16 @@ char *FindOnlyDirectoryName(char *path, int resultsFd, DIR *mainDir) {
     return d->d_name;
 }
 
-void HandleStudentDir(int depth, penalties_t **penalties,
+/******************************************************************************
+ * function name: HandleStudentDir.
+ * The Input: The depth of sub folders from the student's directory (starts
+ * at 0), a pointer to a pointer to a penalties_t struct, a path to the
+ * current folder, the file descriptor of the results file, the DIR stream
+ * of the main directory, the path for the input file and the path of the
+ * correct output to compare to.
+ * The output:
+*******************************************************************************/
+ void HandleStudentDir(int depth, penalties_t **penalties,
                       char *path, int resultsFd, DIR *mainDir,
                       char *inputFilePath, char *correctOutputFilePath) {
     char cPath[PATH_MAX + 1], *name;

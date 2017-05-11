@@ -519,7 +519,7 @@ void handleStudentDir(int depth, penalties_t **penalties,
             else //father returning compare result.
             {
                 int s;
-                sleep(15);
+                //sleep(15);
                 wait(&s);
                 if (WIFEXITED(s))
                 {

@@ -183,6 +183,9 @@ int main(int argc, char *argv[])
             myWrite(resultsFd, ",", strlen(","), resultsFd, mainDir);
 
             char *pnlty = NULL;
+            grade = 0;
+            BOOL isWrongDirectory = penalties->wrongDirectoryDepth > 0 ? TRUE
+                                                                       : FALSE;
             switch (penalties->penalty1)
             {
                 case NO_C_FILE:
@@ -210,6 +213,7 @@ int main(int argc, char *argv[])
                     grade = 70;
                     break;
                 default:
+                    pnlty = "GREAT_JOB\n";
                     grade = 100;
                     break;
             }
@@ -219,20 +223,19 @@ int main(int argc, char *argv[])
             //writing grade
             sprintf(temp, "%d,", grade);
             myWrite(resultsFd, temp, strlen(temp), resultsFd, mainDir);
-
-            if (pnlty != NULL)
+            if (!penalties->penalty1 == OK)
             {
                 myWrite(resultsFd, pnlty, strlen(pnlty), resultsFd, mainDir);
-                if (penalties->wrongDirectoryDepth > 0)
-                    myWrite(resultsFd, ",WRONG_DIRECTORY",
-                            strlen(",WRONG_DIRECTORY"), resultsFd, mainDir);
-                myWrite(resultsFd, "\n", 1, resultsFd, mainDir);
-            } else if (penalties->wrongDirectoryDepth > 0)
-                myWrite(resultsFd, "WRONG_DIRECTORY\n",
-                        strlen("WRONG_DIRECTORY\n"), resultsFd, mainDir);
-            else
-                myWrite(resultsFd, "GREAT_JOB\n", strlen("GREAT_JOB\n"),
-                        resultsFd, mainDir);
+                if (isWrongDirectory)
+                    myWrite(resultsFd, ",WRONG_DIRECTORY\n",
+                            strlen(",WRONG_DIRECTORY\n"), resultsFd, mainDir);
+                continue;
+            }
+
+            if (isWrongDirectory)
+                myWrite(resultsFd, "WRONG_DIRECTORY,",
+                        strlen(",WRONG_DIRECTORY"), resultsFd, mainDir);
+            myWrite(resultsFd, pnlty, strlen(pnlty), resultsFd,mainDir);
         }
         counter++;
     }

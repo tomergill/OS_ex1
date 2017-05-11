@@ -14,10 +14,14 @@
 
 //difference between an uppercase char to lowercase.
 #define UPPER_TO_LOWER_DIFF ('a' - 'A')
-//checks if c is ' ' or '\n'
-#define IS_SPACING_CHAR(c) ((c) == ' ' || (c) == '\n')
 
-typedef enum {FALSE = 0, TRUE = 1} BOOL;
+//checks if c is ' ' or '\n'
+#define IS_SPACING_CHAR(c) ((c) == ' ' || (c) == '\n' || (c) == '\t')
+
+typedef enum
+{
+    FALSE = 0, TRUE = 1
+} BOOL;
 
 /*******************************************************************************
  * function name: readCharFromFile1
@@ -29,7 +33,7 @@ typedef enum {FALSE = 0, TRUE = 1} BOOL;
  * If there was an error while reading, an appropriate message
  * will be printed to stderr, and the program will return with exit code 3.
 *******************************************************************************/
-void readCharFromFile1(int file1, char *char1, BOOL *finished1);
+void ReadCharFromFile1(int file1, char *char1, BOOL *finished1);
 
 /*******************************************************************************
  * function name: readCharFromFile2
@@ -41,10 +45,11 @@ void readCharFromFile1(int file1, char *char1, BOOL *finished1);
  * If there was an error while reading, an appropriate message will be printed
  * to stderr, and the program will return with exit code 3.
 *******************************************************************************/
-void readCharFromFile2(int file2, char *char2, BOOL *finished2);
+void ReadCharFromFile2(int file2, char *char2, BOOL *finished2);
 
-#define READ_1 readCharFromFile1(file1, &char1, &finished1)
-#define READ_2 readCharFromFile2(file2, &char2, &finished2)
+//shortcuts
+#define READ_1 ReadCharFromFile1(file1, &char1, &finished1)
+#define READ_2 ReadCharFromFile2(file2, &char2, &finished2)
 
 /*******************************************************************************
  * function name: main
@@ -71,7 +76,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    printf("Opening file1\n");
+    printf("Opening file1\n"); //Opening file1
     if ((file1 = open(argv[1], O_RDONLY)) == -1)
     {
         char *err;
@@ -85,7 +90,7 @@ int main(int argc, char *argv[])
         exit(3);
     }
 
-    printf("Opening file2\n");
+    printf("Opening file2\n"); //Opening file2
     if ((file2 = open(argv[2], O_RDONLY)) == -1)
     {
         char *err;
@@ -106,15 +111,18 @@ int main(int argc, char *argv[])
      */
     READ_1;
     READ_2;
-    printf("finished1 is %s, finished2 is %s\n", finished1 ? "TRUE":"FALSE",
-           finished2 ? "TRUE":"FALSE");
+    printf("finished1 is %s, finished2 is %s\n", finished1 ? "TRUE" : "FALSE",
+           finished2 ? "TRUE" : "FALSE");
+
     while (!finished1 && !finished2)
     {
         if (toupper(char1) == toupper(char2))//actual characters are equal
         {
             if (abs(char1 - char2) == UPPER_TO_LOWER_DIFF)
+            {
                 //difference is upper/lower letter
                 isSimilar = TRUE;
+            }
             READ_1;
             READ_2;
             continue;
@@ -135,6 +143,8 @@ int main(int argc, char *argv[])
         }
 
         //Definitely not equal
+        close(file1);
+        close(file2);
         exit(3);
     } //end of while
 
@@ -148,7 +158,11 @@ int main(int argc, char *argv[])
         if (IS_SPACING_CHAR(char1))
             READ_1;
         else
+        {
+            close(file1);
+            close(file2);
             return 3; //different
+        }
     }
 
     printf("third while\n");
@@ -161,7 +175,11 @@ int main(int argc, char *argv[])
         if (IS_SPACING_CHAR(char2))
             READ_2;
         else
+        {
+            close(file1);
+            close(file2);
             return 3; //different
+        }
     }
 
     /*
@@ -184,14 +202,14 @@ int main(int argc, char *argv[])
  * If there was an error while reading, an appropriate message
  * will be printed to stderr, and the program will return with exit code 3.
 *******************************************************************************/
-void readCharFromFile1(int file1, char *char1, BOOL *finished1)
+void ReadCharFromFile1(int file1, char *char1, BOOL *finished1)
 {
-    printf("readCharFromFile1\n");
+    printf("ReadCharFromFile1\n");
     int status = read(file1, char1, sizeof(char));
     if (status == 0)
     {
         *finished1 = TRUE;
-	    printf("status = 0\n");
+        printf("status = 0\n");
         return;
     }
     else if (status < 0)
@@ -221,9 +239,9 @@ void readCharFromFile1(int file1, char *char1, BOOL *finished1)
  * If there was an error while reading, an appropriate message will be printed
  * to stderr, and the program will return with exit code 3.
 *******************************************************************************/
-void readCharFromFile2(int file2, char *char2, BOOL *finished2)
+void ReadCharFromFile2(int file2, char *char2, BOOL *finished2)
 {
-    printf("readCharFromFile2\n");
+    printf("ReadCharFromFile2\n");
     int status = read(file2, char2, sizeof(char));
     if (status == 0)
     {

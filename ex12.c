@@ -213,7 +213,7 @@ int main(int argc, char *argv[])
                     grade = 70;
                     break;
                 default:
-                    pnlty = "GREAT_JOB\n";
+                    pnlty = "GREAT_JOB";
                     grade = 100;
                     break;
             }
@@ -227,15 +227,17 @@ int main(int argc, char *argv[])
             {
                 myWrite(resultsFd, pnlty, strlen(pnlty), resultsFd, mainDir);
                 if (isWrongDirectory)
-                    myWrite(resultsFd, ",WRONG_DIRECTORY\n",
-                            strlen(",WRONG_DIRECTORY\n"), resultsFd, mainDir);
-                continue;
+                    myWrite(resultsFd, ",WRONG_DIRECTORY",
+                            strlen(",WRONG_DIRECTORY"), resultsFd, mainDir);
             }
-
-            if (isWrongDirectory)
-                myWrite(resultsFd, "WRONG_DIRECTORY,",
-                        strlen(",WRONG_DIRECTORY"), resultsFd, mainDir);
-            myWrite(resultsFd, pnlty, strlen(pnlty), resultsFd,mainDir);
+            else
+            {
+                if (isWrongDirectory)
+                    myWrite(resultsFd, "WRONG_DIRECTORY,",
+                            strlen(",WRONG_DIRECTORY"), resultsFd, mainDir);
+                myWrite(resultsFd, pnlty, strlen(pnlty), resultsFd, mainDir);
+            }
+            myWrite(resultsFd, "\n", strlen("\n"), resultsFd, mainDir);
         }
         counter++;
     }

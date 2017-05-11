@@ -478,19 +478,21 @@ void handleStudentDir(int depth, penalties_t **penalties,
                 if (waitpid(cid, &stat, WNOHANG))
                     under5Seconds = TRUE;
             }
+            //printf("under5Seconds is %s\n", under5Seconds ? "TRUE" : "FALSE");
             if (!under5Seconds)
             {
                 //TODO kill process
                 //TIMEOUT
                 kill(cid, SIGKILL);
+                wait(&stat);
                 (*penalties)->penalty1 = TIMEOUT;
                 (*penalties)->wrongDirectoryDepth = 0;
                 close(outputFd);
                 close(inputFd);
                 dup2(copyStdin, 0);
                 dup2(copyStdout, 1);
-//                unlink("./output");
-//                unlink("./a.out");
+                unlink("./output");
+                unlink("./a.out");
                 return;
             }
 
@@ -538,8 +540,8 @@ void handleStudentDir(int depth, penalties_t **penalties,
                             break;
                     }
                     (*penalties)->wrongDirectoryDepth = depth;
-//                    unlink("./output");
-//                    unlink("./a.out");
+                    unlink("./output");
+                    unlink("./a.out");
                     return;
                 }
             }

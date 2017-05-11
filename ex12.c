@@ -696,7 +696,7 @@ BOOL CFileCompiled(char *path, int resultsFd, DIR *mainDir) {
     int stat;
 
     printf("compiling %s\n", path);
-    char *args[] = {"gcc", path, "-o", "temp.out", NULL};
+    char *args[] = {"gcc", path, "-o", "./temp.out", NULL};
     if ((cid = MyFork(resultsFd, mainDir)) == 0) //child proccess
     {
 

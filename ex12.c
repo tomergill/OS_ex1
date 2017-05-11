@@ -470,7 +470,10 @@ char *FindOnlyDirectoryName(char *path, int resultsFd, DIR *mainDir) {
  * current folder, the file descriptor of the results file, the DIR stream
  * of the main directory, the path for the input file and the path of the
  * correct output to compare to.
- * The output:
+ * The output: penalties will hold either a penalty (except WRONG_DIRECTORY),
+ * the depth of sub-directories the c-file is in, both of them (BO/SO/GJ + WD)
+ * or NULL if there was an error the process didn't exit because of it.
+ * The Function operation:
 *******************************************************************************/
  void HandleStudentDir(int depth, penalties_t **penalties,
                       char *path, int resultsFd, DIR *mainDir,

@@ -208,7 +208,7 @@ int main(int argc, char *argv[])
 *******************************************************************************/
 void ReadCharFromFile1(int file1, char *char1, BOOL *finished1)
 {
-    int status = read(file1, char1, sizeof(char));
+    int status = (int) read(file1, char1, sizeof(char));
     if (status == 0)
     {
         *finished1 = TRUE;
@@ -243,7 +243,7 @@ void ReadCharFromFile1(int file1, char *char1, BOOL *finished1)
 *******************************************************************************/
 void ReadCharFromFile2(int file2, char *char2, BOOL *finished2)
 {
-    int status = read(file2, char2, sizeof(char));
+    int status = (int) read(file2, char2, sizeof(char));
     if (status == 0)
     {
         *finished2 = TRUE;

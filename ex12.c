@@ -88,6 +88,30 @@ void MyOpenDir(DIR **dir, char *path, int resultsFd, DIR *mainDir);
 *******************************************************************************/
 char *FindCFileInLevel(char *path, int resultsFd, DIR *mainDir);
 
+/******************************************************************************
+ * function name: HandleStudentDir.
+ *
+ * The Input: The depth of sub folders from the student's directory (starts
+ * at 0), a pointer to a pointer to a penalties_t struct, a path to the
+ * current folder, the file descriptor of the results file, the DIR stream
+ * of the main directory, the path for the input file and the path of the
+ * correct output to compare to.
+ *
+ * The output: penalties will hold either a penalty (except WRONG_DIRECTORY),
+ * the depth of sub-directories the c-file is in, both of them (BO/SO/GJ + WD)
+ * or NULL if there was an error the process didn't exit because of it.
+ *
+ * The Function operation: The function checks for a c-file in the directory.
+ * If there isn't one, it checks if there is a single directory (no more, no
+ * less), and calls itself on it (meaning if c-file will be found later it
+ * will have WRONG_DIRECTORY), otherwise returns either NO_C_FILE or
+ * MULTIPLE_DIRECTORIES (depends on case).
+ * If c-file found, it will be compiled (if not returns COMPILATION_ERROR),
+ * run with input from the input file under 5 seconds (otherwise returns
+ * TIMEOUT) and the output will be compared with the correctOutput file. If
+ * same returns GREAT_JOB, similar returns SIMILLAR_OUTPUT and different will
+ * return BAD_OUTPUT.
+*******************************************************************************/
 void HandleStudentDir(int depth, penalties_t **penalties,
                       char *path, int resultsFd, DIR *mainDir,
                       char *inputFilePath, char *correctOutputFilePath);
@@ -167,11 +191,6 @@ pid_t MyFork(int resultsFd, DIR *mainDir);
 *******************************************************************************/
 char *FindOnlyDirectoryName(char *path, int resultsFd, DIR *mainDir);
 
-
-
-
-
-
 /******************************************************************************
  * function name: main
  * The Input: A path to a configuration file, holding 3 rows exactly in that
@@ -191,10 +210,9 @@ int main(int argc, char *argv[])
     char folderLocation[LINE_SIZE + 1], inputLocation[LINE_SIZE + 1],
             outputLocation[LINE_SIZE + 1];
     int configFd, resultsFd;
-    DIR *mainDir = NULL, *childDir = NULL;
+    DIR *mainDir = NULL;
     struct dirent *curDirent = NULL;
     penalties_t p, *penalties;
-    penalties = &p;
     char path[PATH_MAX + 1];
     int grade;
 
@@ -207,7 +225,6 @@ int main(int argc, char *argv[])
     /*
      * Open the config file.
      */
-    printf("Opening config file\n");
     if ((configFd = open(argv[1], O_RDONLY)) == -1)
     {
         char *err;
@@ -239,7 +256,6 @@ int main(int argc, char *argv[])
     if ((resultsFd = open("results.csv", O_WRONLY | O_CREAT | O_TRUNC,
                           S_IRUSR | S_IRGRP | S_IWUSR)) == -1)
     {
-        printf("errno = %d\n", errno);
         char *err;
         if (errno == EACCES)
             err = "Error : 'open' was unable to open the results file ";
@@ -391,23 +407,27 @@ int ReadLineFromFile(int fd, char *line)
 
     for (; i < LINE_SIZE; ++i)
     {
-        int status = read(fd, &c, sizeof(char));
-        if (status == 0) {
+        int status = (int) read(fd, &c, sizeof(char));
+        if (status == 0)
+        {
             line[i] = '\0';
             return i + 1;
-        } else if (status == -1) {
+        }
+        else if (status == -1)
+        {
             if (errno == EBADF)
-                perror("Error : config file is not a valid file descriptor or is not open for "
-                               "reading.\n");
+                perror("Error : config file is not a valid file descriptor or"
+                               " is not open for reading");
             else if (errno == EFAULT)
-                perror("Error : char c is outside your accessible address space.\n");
+                perror("Error : char c is outside your accessible address "
+                               "space");
             else if (errno == EIO)
-                perror("Error : I/O error while reading the config file.\n");
+                perror("Error : I/O error while reading the config file");
             else if (errno == EISDIR)
-                perror("Error : config file descriptor points to a directory.\n");
+                perror("Error : config file descriptor points to a directory");
             else
-                perror("Error : unknown error while reading config file.\n");
-            exit(3);
+                perror("Error : unknown error while reading config file");
+            exit(-1);
         }
         if (c == '\n')
         {
@@ -446,9 +466,10 @@ BOOL IsDir(char *path, int resultsFd, DIR *mainDir)
             perror("dirent doesn't exist");
         else
             perror("Error getting dirent stat");
-        close(resultsFd);
-        closedir(mainDir);
-        exit(2);
+
+        if (closedir(mainDir) == -1 || close(resultsFd) == -1)
+            perror("error closing main directory or results file");
+        exit(-1);
     }
     if (S_ISDIR(stat1.st_mode))
         return TRUE;
@@ -464,7 +485,8 @@ BOOL IsDir(char *path, int resultsFd, DIR *mainDir)
  * The Function operation: Tries to opendir(path), and if works points *DIR to
  * it.
 *******************************************************************************/
-void MyOpenDir(DIR **dir, char *path, int resultsFd, DIR *mainDir) {
+void MyOpenDir(DIR **dir, char *path, int resultsFd, DIR *mainDir)
+{
     if ((*dir = opendir(path)) == NULL) //opening dir
     {
         //failed
@@ -480,11 +502,11 @@ void MyOpenDir(DIR **dir, char *path, int resultsFd, DIR *mainDir) {
             perror("path to dir isn't pointing to a directory");
         else
             perror("Unknown error opening main directory");
-        if (resultsFd > 2)
-            close(resultsFd);
-        if (mainDir != NULL)
-            closedir(mainDir);
-        exit(2);
+
+        if ((mainDir != NULL && closedir(mainDir)) == -1 ||
+                close(resultsFd) == -1)
+            perror("error closing main directory or results file");
+        exit(-1);
     }
 }
 
@@ -789,7 +811,8 @@ char *FindOnlyDirectoryName(char *path, int resultsFd, DIR *mainDir)
         strcmp(name, "") != 0) //name isn't "" ot NULL
     {
         //only one directory
-        if (strlen(name) + strlen(path) > PATH_MAX) {
+        if (strlen(name) + strlen(path) > PATH_MAX)
+        {
             perror("PATH TOO LONG");
             *penalties = NULL;
             return;
@@ -933,14 +956,14 @@ struct dirent *MyReadDir(DIR *dir, int resultsFd, DIR *mainDir)
 *******************************************************************************/
 BOOL CFileCompiled(char *path, int resultsFd, DIR *mainDir)
 {
-    pid_t cid;
     int stat;
 
     char *args[] = {"gcc", path, "-o", "./temp.out", NULL};
-    if ((cid = MyFork(resultsFd, mainDir)) == 0) //child proccess
+    if ((MyFork(resultsFd, mainDir)) == 0) //child proccess
     {
 
-        if (execvp("gcc", args) == -1) {
+        if (execvp("gcc", args) == -1)
+        {
             perror("can't run gcc");
             exit(-1);
         }

@@ -371,11 +371,6 @@ int main(int argc, char *argv[])
         perror("error closing main directory");
     if (close(resultsFd) == -1)
         perror("error closing results.cvs file");
-
-    if (unlink("./output.txt") == -1)
-        perror("error deleting 'output.txt'");
-    if (unlink("./temp.out") == -1)
-        perror("error deleting 'temp.out'");
     return 0;
 }
 

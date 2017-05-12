@@ -741,7 +741,7 @@ char *FindOnlyDirectoryName(char *path, int resultsFd, DIR *mainDir)
 
                 if (close(outputFd) == -1 || close(inputFd) == -1 ||
                         dup2(copyStdin, 0) == -1 || dup2(copyStdout, 1) == -1 ||
-                        unlink("./output") == -1 || unlink("./temp.out") == -1)
+                        unlink("./output.txt") == -1 || unlink("./temp.out") == -1)
                 {
                     perror("error closing up after timeout");
                     exit(-1);
@@ -795,9 +795,10 @@ char *FindOnlyDirectoryName(char *path, int resultsFd, DIR *mainDir)
                             break;
                     }
                     (*penalties)->wrongDirectoryDepth = depth;
-                    if (unlink("./output") == -1 || unlink("./temp.out") == -1)
+                    if (unlink("./output.txt") == -1 ||
+                            unlink("./temp.out") == -1)
                     {
-                        perror("error deleting 'output.txt' ot 'temp.out'");
+                        perror("error deleting 'output.txt' ot 'temp.out' : a");
                         exit(-1);
                     }
                     return;

@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    printf("Opening file1\n"); //Opening file1
+    //Opening file1
     if ((file1 = open(argv[1], O_RDONLY)) == -1)
     {
         char *err;
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
         exit(3);
     }
 
-    printf("Opening file2\n"); //Opening file2
+    //Opening file2
     if ((file2 = open(argv[2], O_RDONLY)) == -1)
     {
         char *err;
@@ -104,16 +104,12 @@ int main(int argc, char *argv[])
         exit(3);
     }
 
-    printf("first while\n");
     /*
      * While there are still characters to read in both files, compare them.
      * If they are equal read the next ones.
      */
     READ_1;
     READ_2;
-    printf("finished1 is %s, finished2 is %s\n", finished1 ? "TRUE" : "FALSE",
-           finished2 ? "TRUE" : "FALSE");
-
     while (!finished1 && !finished2)
     {
         if (toupper(char1) == toupper(char2))//actual characters are equal
@@ -143,12 +139,13 @@ int main(int argc, char *argv[])
         }
 
         //Definitely not equal
-        close(file1);
-        close(file2);
+        if (close(file1) == -1)
+            perror("problem closing file 1");
+        if (close(file2) == -1)
+            perror("problem closing file 2");
         exit(3);
-    } //end of while
+    } //end of while(!finished1 && !finished2)
 
-    printf("second while\n");
     /*
      * while there are still left chars to read in file1, read.
      * If all of them are ' ' or \n, the files are similar.
@@ -159,15 +156,16 @@ int main(int argc, char *argv[])
             READ_1;
         else
         {
-            close(file1);
-            close(file2);
+            if (close(file1) == -1)
+                perror("problem closing file 1");
+            if (close(file2) == -1)
+                perror("problem closing file 2");
             return 3; //different
         }
     }
 
-    printf("third while\n");
     /*
-     * while there are still left chars to read in file1, read.
+     * while there are still left chars to read in file2, read.
      * If all of them are ' ' or \n, the files are similar.
      */
     while (!finished2)
@@ -176,8 +174,10 @@ int main(int argc, char *argv[])
             READ_2;
         else
         {
-            close(file1);
-            close(file2);
+            if (close(file1) == -1)
+                perror("problem closing file 1");
+            if (close(file2) == -1)
+                perror("problem closing file 2");
             return 3; //different
         }
     }
@@ -189,6 +189,10 @@ int main(int argc, char *argv[])
      * (It's clear to see that if the files are different, the program will exit
      * before, returning 3 as required.)
      */
+    if (close(file1) == -1)
+        perror("problem closing file 1");
+    if (close(file2) == -1)
+        perror("problem closing file 2");
     return 1 + isSimilar;
 }
 
@@ -204,12 +208,10 @@ int main(int argc, char *argv[])
 *******************************************************************************/
 void ReadCharFromFile1(int file1, char *char1, BOOL *finished1)
 {
-    printf("ReadCharFromFile1\n");
     int status = read(file1, char1, sizeof(char));
     if (status == 0)
     {
         *finished1 = TRUE;
-        printf("status = 0\n");
         return;
     }
     else if (status < 0)
@@ -241,7 +243,6 @@ void ReadCharFromFile1(int file1, char *char1, BOOL *finished1)
 *******************************************************************************/
 void ReadCharFromFile2(int file2, char *char2, BOOL *finished2)
 {
-    printf("ReadCharFromFile2\n");
     int status = read(file2, char2, sizeof(char));
     if (status == 0)
     {
